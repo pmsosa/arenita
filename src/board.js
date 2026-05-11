@@ -1,5 +1,5 @@
 import { SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobs, stepSand, isTopped, addGarbageRows } from './sand.js';
-import { getAbsoluteCells } from './tetromino.js';
+import { getAbsoluteCells, PIECES } from './tetromino.js';
 
 export const BOARD_COLS = 10;
 export const BOARD_ROWS = 20;
