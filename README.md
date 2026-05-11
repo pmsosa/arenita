@@ -86,6 +86,10 @@ src/
 
 zero dependencies. zero build steps. zero regrets (some regrets) 🫠.
 
+## disclaimer ⚠️
+
+some of this readme was written by an AI and contains inaccuracies. i noticed. i left them in. accuracy is a vibe and the vibe was off. the spirit is true even if the details aren't. you'll figure it out.
+
 ## license 📜
 
 BSD-3. attribution please, it's not a lot to ask 🙏. full terms in [LICENSE](LICENSE).
