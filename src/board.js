@@ -9,6 +9,7 @@ export class Board {
     this.grid = createSandGrid();
     this._settling = false;
     this._stillFrames = 0;
+    this._clearAccum = null;
   }
 
   // Check if a set of tetromino-grid cells collide with walls or settled sand
@@ -49,10 +50,20 @@ export class Board {
       if (!moved) {
         this._stillFrames++;
         if (this._stillFrames >= 2) {
-          this._settling = false;
           this._stillFrames = 0;
           const result = detectAndClearBlobs(this.grid);
-          return result;
+          if (result.cleared > 0) {
+            // Accumulate clears and stay in settling mode so any sand that
+            // continues moving after this clear gets another clearing pass.
+            if (!this._clearAccum) this._clearAccum = { cleared: 0, chains: 0 };
+            this._clearAccum.cleared += result.cleared;
+            this._clearAccum.chains += result.chains + 1;
+          } else {
+            this._settling = false;
+            const final = this._clearAccum ?? result;
+            this._clearAccum = null;
+            return final;
+          }
         }
       } else {
         this._stillFrames = 0;
@@ -89,5 +100,6 @@ export class Board {
     this.grid.fill(0);
     this._settling = false;
     this._stillFrames = 0;
+    this._clearAccum = null;
   }
 }
