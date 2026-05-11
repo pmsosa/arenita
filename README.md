@@ -28,6 +28,17 @@ python3 -m http.server 8765
 
 that's it. that's the whole installation 🎉. no npm install. no node_modules folder eating your soul. just a python server you already have.
 
+if you're even lazier (valid):
+
+```sh
+chmod +x start.sh  # once, just once, you can do it
+./start.sh
+```
+
+does the same thing but you don't have to remember the port number like some kind of nerd.
+
+
+
 ## controls 🕹️
 
 ### 1 player (either works, we don't gatekeep)
