@@ -2,6 +2,7 @@ import { Player } from './player.js';
 import { Renderer } from './renderer.js';
 import { InputManager } from './input.js';
 import { audio } from './audio.js';
+import { SAND_COLORS, DIFFICULTY_COLOR_COUNTS } from './tetromino.js';
 
 export const STATE = {
   MENU:       'MENU',
@@ -22,8 +23,9 @@ export class Game {
     this.winner = null;
 
     this.players = [];
-    this.menuSelection = 0; // 0=1P, 1=2P
-    this.menuItems = ['1 Player', '2 Players'];
+    this.menuStep = 0;       // 0=mode select, 1=difficulty select
+    this.menuMode = 0;       // 0=1P, 1=2P
+    this.menuDifficulty = 1; // 0=easy, 1=medium, 2=hard
 
     this._setupMenuKeys();
   }
@@ -31,32 +33,52 @@ export class Game {
   _setupMenuKeys() {
     this._menuKeyHandler = (e) => {
       if (this.state !== STATE.MENU) return;
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-        this.menuSelection = (this.menuSelection + this.menuItems.length - 1) % this.menuItems.length;
+
+      if (this.menuStep === 0) {
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+          this.menuMode = (this.menuMode + 1) % 2;
+        }
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+          this.menuMode = (this.menuMode + 1) % 2;
+        }
+        if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyZ') {
+          this.menuStep = 1;
+        }
+        if (e.code === 'Digit1') { this.menuMode = 0; this.menuStep = 1; }
+        if (e.code === 'Digit2') { this.menuMode = 1; this.menuStep = 1; }
+      } else {
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+          this.menuDifficulty = (this.menuDifficulty + 2) % 3;
+        }
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+          this.menuDifficulty = (this.menuDifficulty + 1) % 3;
+        }
+        if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyZ') {
+          this._startGame(this.menuMode + 1, this.menuDifficulty);
+        }
+        if (e.code === 'Escape' || e.code === 'Backspace') {
+          this.menuStep = 0;
+        }
       }
-      if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-        this.menuSelection = (this.menuSelection + 1) % this.menuItems.length;
-      }
-      if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyZ') {
-        this._startGame(this.menuSelection + 1);
-      }
-      if (e.code === 'Digit1') this._startGame(1);
-      if (e.code === 'Digit2') this._startGame(2);
     };
     window.addEventListener('keydown', this._menuKeyHandler);
   }
 
-  _startGame(numPlayers) {
+  _startGame(numPlayers, difficulty) {
+    const diffKey = ['easy', 'medium', 'hard'][difficulty ?? 1];
+    const colorCount = DIFFICULTY_COLOR_COUNTS[diffKey];
+    const colorPool = SAND_COLORS.slice(0, colorCount);
+
     this.players = [];
     if (numPlayers === 1) {
       this.state = STATE.PLAYING_1P;
       this.renderer.setupFor1P();
-      this.players.push(new Player(0));
+      this.players.push(new Player(0, colorPool));
     } else {
       this.state = STATE.PLAYING_2P;
       this.renderer.setupFor2P();
-      this.players.push(new Player(0));
-      this.players.push(new Player(1));
+      this.players.push(new Player(0, colorPool));
+      this.players.push(new Player(1, colorPool));
     }
     this.winner = null;
   }
@@ -75,7 +97,8 @@ export class Game {
           this.state = STATE.PAUSED;
           break;
         }
-        this._update1P(dt, playerActions[0]);
+        // Merge WASD (P1) and Arrow keys (P2 slot) for single-player
+        this._update1P(dt, _mergeActions(playerActions[0], playerActions[1]));
         break;
 
       case STATE.PLAYING_2P:
@@ -102,7 +125,8 @@ export class Game {
       case STATE.GAMEOVER:
         if (global.restart) {
           this.state = STATE.MENU;
-          this.menuSelection = 0;
+          this.menuStep = 0;
+          this.menuMode = 0;
           this.canvas.width  = 560;
           this.canvas.height = 600;
           break;
@@ -160,29 +184,57 @@ export class Game {
     ctx.fillStyle = '#FFD700';
     ctx.font = 'bold 52px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('ARENITA', cw / 2, 170);
+    ctx.fillText('ARENITA', cw / 2, 150);
 
     ctx.fillStyle = '#888';
     ctx.font = '16px monospace';
-    ctx.fillText('Sand Tetris', cw / 2, 205);
+    ctx.fillText('Sand Tetris', cw / 2, 182);
 
-    // Menu items
-    for (let i = 0; i < this.menuItems.length; i++) {
-      const selected = i === this.menuSelection;
-      ctx.fillStyle = selected ? '#FFD700' : '#555';
-      ctx.font = selected ? 'bold 24px monospace' : '20px monospace';
-      const prefix = selected ? '▶ ' : '  ';
-      ctx.fillText(prefix + this.menuItems[i], cw / 2, 290 + i * 55);
+    if (this.menuStep === 0) {
+      ctx.fillStyle = '#666';
+      ctx.font = '13px monospace';
+      ctx.fillText('Select Mode', cw / 2, 240);
+
+      const modes = ['1 Player', '2 Players'];
+      for (let i = 0; i < modes.length; i++) {
+        const sel = i === this.menuMode;
+        ctx.fillStyle = sel ? '#FFD700' : '#555';
+        ctx.font = sel ? 'bold 26px monospace' : '22px monospace';
+        ctx.fillText((sel ? '▶ ' : '  ') + modes[i], cw / 2, 290 + i * 60);
+      }
+
+      ctx.fillStyle = '#444';
+      ctx.font = '12px monospace';
+      ctx.fillText('↑↓ to select  ·  Enter to continue  ·  1 / 2 to start', cw / 2, ch - 40);
+      ctx.fillStyle = '#333';
+      ctx.font = '11px monospace';
+      ctx.fillText('P1: WASD + Q/E + Shift  |  P2: Arrows + ,/. + Shift', cw / 2, ch - 20);
+    } else {
+      const modeName = this.menuMode === 0 ? '1 Player' : '2 Players';
+      ctx.fillStyle = '#666';
+      ctx.font = '13px monospace';
+      ctx.fillText(modeName + '  —  Select Difficulty', cw / 2, 240);
+
+      const levels = [
+        { label: 'Easy',   desc: '3 colors' },
+        { label: 'Medium', desc: '5 colors' },
+        { label: 'Hard',   desc: '7 colors' },
+      ];
+      for (let i = 0; i < levels.length; i++) {
+        const sel = i === this.menuDifficulty;
+        ctx.fillStyle = sel ? '#FFD700' : '#555';
+        ctx.font = sel ? 'bold 24px monospace' : '20px monospace';
+        const line = (sel ? '▶ ' : '  ') + levels[i].label;
+        ctx.fillText(line, cw / 2, 285 + i * 58);
+        ctx.fillStyle = sel ? '#aaa' : '#444';
+        ctx.font = '12px monospace';
+        ctx.fillText('(' + levels[i].desc + ')', cw / 2, 305 + i * 58);
+      }
+
+      ctx.fillStyle = '#444';
+      ctx.font = '12px monospace';
+      ctx.fillText('↑↓ to select  ·  Enter to start  ·  Esc to go back', cw / 2, ch - 20);
     }
-
-    // Controls hint
-    ctx.fillStyle = '#444';
-    ctx.font = '12px monospace';
-    ctx.fillText('↑↓ to select  ·  Enter / 1 / 2 to start', cw / 2, ch - 40);
-
-    ctx.fillStyle = '#333';
-    ctx.font = '11px monospace';
-    ctx.fillText('P1: WASD + Q/E + Shift    P2: Arrows + ,/. + Shift', cw / 2, ch - 20);
 
     ctx.textAlign = 'left';
   }
@@ -205,4 +257,16 @@ export class Game {
     this.input.destroy();
     window.removeEventListener('keydown', this._menuKeyHandler);
   }
+}
+
+function _mergeActions(a, b) {
+  return {
+    left:      a.left      || b.left,
+    right:     a.right     || b.right,
+    softDrop:  a.softDrop  || b.softDrop,
+    hardDrop:  a.hardDrop  || b.hardDrop,
+    rotateCW:  a.rotateCW  || b.rotateCW,
+    rotateCCW: a.rotateCCW || b.rotateCCW,
+    hold:      a.hold      || b.hold,
+  };
 }

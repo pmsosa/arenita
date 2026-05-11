@@ -190,7 +190,7 @@ export class Renderer {
       const ghostY = state.board.getGhostY(state.active);
       const cells = PIECES[state.active.type].cells[state.active.rotation]
         .map(([dc, dr]) => [state.active.x + dc, ghostY + dr]);
-      const color = PIECES[state.active.type].color;
+      const color = state.active.color;
       ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},0.25)`;
       ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},0.6)`;
       ctx.lineWidth = 1;
@@ -204,7 +204,7 @@ export class Renderer {
     // Active piece
     if (state.active) {
       const cells = getAbsoluteCells(state.active);
-      const color = PIECES[state.active.type].color;
+      const color = state.active.color;
       ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},0.85)`;
       for (const [tx, ty] of cells) {
         if (ty < 0) continue;
@@ -301,14 +301,15 @@ export class Renderer {
     ctx.fillRect(x, boardY + bh - h, 8, h);
   }
 
-  _drawPiecePreview(ctx, type, x, y, cell) {
-    if (!type) {
+  _drawPiecePreview(ctx, piece, x, y, cell) {
+    if (!piece) {
       ctx.fillStyle = '#333';
       ctx.fillRect(x, y, cell * 4, cell * 2.5);
       return;
     }
+    const type = piece.type || piece;
+    const color = piece.color || PIECES[type].color;
     const cells = PIECES[type].cells[0];
-    const color = PIECES[type].color;
     ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
     for (const [dc, dr] of cells) {
       ctx.fillRect(x + dc * cell, y + dr * cell, cell - 1, cell - 1);

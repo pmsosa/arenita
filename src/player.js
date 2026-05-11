@@ -1,5 +1,5 @@
 import { Board } from './board.js';
-import { spawnPiece, getAbsoluteCells, rotatePiece, PIECES } from './tetromino.js';
+import { spawnPiece, getAbsoluteCells, rotatePiece, PIECES, SAND_COLORS } from './tetromino.js';
 import { audio } from './audio.js';
 
 const LOCK_DELAY = 500;   // ms before a grounded piece auto-locks
@@ -7,8 +7,9 @@ const MAX_LOCK_RESETS = 15;
 const SOFT_MULT = 10;     // soft drop is 10× faster than normal fall
 
 export class Player {
-  constructor(index) {
+  constructor(index, colorPool) {
     this.index = index;
+    this.colorPool = colorPool || SAND_COLORS;
     this.board = new Board();
 
     this.active = null;
@@ -41,8 +42,14 @@ export class Player {
     return this._bag.pop();
   }
 
+  _pickColor() {
+    return this.colorPool[Math.floor(Math.random() * this.colorPool.length)];
+  }
+
   _fillNext(count = 3) {
-    while (this.next.length < count) this.next.push(this._nextType());
+    while (this.next.length < count) {
+      this.next.push({ type: this._nextType(), color: this._pickColor() });
+    }
   }
 
   spawn() {
@@ -52,9 +59,9 @@ export class Player {
       this.garbageQueue.pending = 0;
     }
 
-    const type = this.next.shift();
+    const item = this.next.shift();
     this._fillNext(3);
-    this.active = spawnPiece(type);
+    this.active = spawnPiece(item.type, item.color);
     this.holdUsed   = false;
     this.lockTimer  = 0;
     this.lockResets = 0;
@@ -70,9 +77,9 @@ export class Player {
     if (this.holdUsed || !this.active) return;
     this.holdUsed = true;
     const prev = this.held;
-    this.held = this.active.type;
+    this.held = { type: this.active.type, color: this.active.color };
     if (prev) {
-      this.active = spawnPiece(prev);
+      this.active = spawnPiece(prev.type, prev.color);
       if (this.board.collides(getAbsoluteCells(this.active))) this.dead = true;
       this.lockTimer  = 0;
       this.lockResets = 0;

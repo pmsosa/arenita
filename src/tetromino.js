@@ -3,6 +3,20 @@
 
 export const PIECE_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 
+// Colorblind-friendly sand color pool — ordered easy→hard
+// Each pair differs by >50 in at least one channel so isSameColor(tol=30) never cross-matches
+export const SAND_COLORS = [
+  [0,   220, 230],  // Cyan
+  [240, 120,   0],  // Orange
+  [160,   0, 230],  // Purple
+  [220,  30,  30],  // Red
+  [240, 220,   0],  // Yellow
+  [0,    60, 220],  // Blue
+  [0,   130,  30],  // Dark Green (distinct from yellow for colorblind users)
+];
+
+export const DIFFICULTY_COLOR_COUNTS = { easy: 3, medium: 5, hard: 7 };
+
 export const PIECES = {
   I: {
     color: [0, 240, 240],
@@ -149,9 +163,9 @@ export function rotatePiece(piece, dir, board) {
   return null; // rotation failed
 }
 
-export function spawnPiece(type) {
+export function spawnPiece(type, color) {
   const def = PIECES[type];
-  return { type, rotation: 0, x: def.spawnX, y: def.spawnY };
+  return { type, rotation: 0, x: def.spawnX, y: def.spawnY, color: color || def.color };
 }
 
 let bag = [];
