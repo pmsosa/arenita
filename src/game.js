@@ -257,11 +257,24 @@ export class Game {
       ctx.font = '13px monospace';
       ctx.fillText(`${modeName}  ·  ${diffName}  —  Select Background`, cw / 2, 240);
 
-      for (let i = 0; i < BG_LABELS.length; i++) {
+      // Scrollable list — show 7 items centred on selection
+      const BG_VISIBLE = 7;
+      const bgWin = Math.max(0, Math.min(this.menuBgStyle - 3, BG_LABELS.length - BG_VISIBLE));
+      const bgEnd = Math.min(BG_LABELS.length, bgWin + BG_VISIBLE);
+      for (let i = bgWin; i < bgEnd; i++) {
         const sel = i === this.menuBgStyle;
+        const pos = i - bgWin;
         ctx.fillStyle = sel ? '#FFD700' : '#555';
-        ctx.font = sel ? 'bold 24px monospace' : '20px monospace';
-        ctx.fillText((sel ? '▶ ' : '  ') + BG_LABELS[i], cw / 2, 285 + i * 58);
+        ctx.font = sel ? 'bold 20px monospace' : '17px monospace';
+        ctx.fillText((sel ? '▶ ' : '  ') + BG_LABELS[i], cw / 2, 270 + pos * 38);
+      }
+      if (bgWin > 0) {
+        ctx.fillStyle = '#444'; ctx.font = '11px monospace';
+        ctx.fillText(`↑  ${bgWin} more`, cw / 2, 255);
+      }
+      if (bgEnd < BG_LABELS.length) {
+        ctx.fillStyle = '#444'; ctx.font = '11px monospace';
+        ctx.fillText(`↓  ${BG_LABELS.length - bgEnd} more`, cw / 2, 270 + BG_VISIBLE * 38);
       }
 
       ctx.fillStyle = '#444';

@@ -226,14 +226,16 @@ Backgrounds are drawn by `src/background.js` before the board each frame. The st
 
 ```js
 drawBackground(ctx, style, w, h, t)
-// style: 'dark' | 'stars' | 'vaporwave' | 'tessellation' | 'plasma'
+// style: 'dark' | 'stars' | 'vaporwave' | 'tessellation' | 'plasma' |
+//        'matrix' | 'crt' | 'lava' | 'underwater' | 'landscape' |
+//        'glitch' | 'life' | 'reaction'
 // t: Date.now() — drives all animations
 ```
 
-Exported constants for iteration in menus:
+Exported constants for iteration in menus (indices must stay in sync):
 ```js
-BG_STYLES  // ['dark', 'stars', 'vaporwave', 'tessellation', 'plasma']
-BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation', 'Plasma']
+BG_STYLES  // ['dark','stars','vaporwave','tessellation','plasma','matrix','crt','lava','underwater','landscape','glitch','life','reaction']
+BG_LABELS  // ['Dark','Starfield','Vaporwave','Tessellation','Plasma','Matrix Rain','CRT','Lava Lamp','Underwater','Landscape','Glitch',"Conway's Life",'Reaction-Diffusion']
 ```
 
 ### Styles
@@ -241,10 +243,18 @@ BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation', 'Plasma']
 | Style | Description |
 |---|---|
 | `dark` | Flat `#0d0d0d` fill — same as the original default |
-| `stars` | 150 background stars drifting downward at varied speeds, tinted warm/cool/white for depth. 5 constellation clusters (Big Dipper, Cassiopeia, Orion, Southern Cross, Leo) each with pixel-offset stars, faint connecting lines, and an independent twinkle pulse. Stars and constellations are module-level constants (no re-roll per frame). |
-| `vaporwave` | HSL-cycling gradient sky + floor, radial sun at horizon, scrolling perspective grid (horizontal lines quadratically spaced, vertical lines converging to vanishing point). Grid scrolls via `(t * 0.00006) % 0.1`. |
-| `tessellation` | Diamond lattice (`32px` half-size) drifting slowly downward; hue cycles over time. Alternating rows offset by half-cell for the diamond pattern. |
-| `plasma` | Psychedelic pixel-liquid effect. Canvas divided into `8px` cells; each cell colored with a 4-wave sine plasma formula mapped to a fast-cycling HSL hue. Produces smooth color blobs that flow and morph continuously. `~5250` `fillRect` calls per frame at 560×600. |
+| `stars` | 150 background stars (warm/cool/white tinted) plus 5 constellation clusters (Big Dipper, Cassiopeia, Orion, Southern Cross, Leo) with faint connecting lines and per-star twinkle. All data is module-level (no re-roll per frame). |
+| `vaporwave` | HSL-cycling gradient sky + floor, radial sun at horizon, scrolling perspective grid. |
+| `tessellation` | Diamond lattice (`32px` half-size) drifting downward with hue cycling. |
+| `plasma` | 4-wave sine plasma formula on an `8px` cell grid, mapped to fast-cycling HSL. |
+| `matrix` | Falling katakana/numeric columns with white head, bright-green shoulder, fading green trail. Character glyphs slowly scramble over time. |
+| `crt` | Dark phosphor-green background, 1px scanline bands every 3px, slow-rolling refresh bar, corner vignette. |
+| `lava` | 6 sinusoidally-moving metaball blobs on a `10px` coarse grid. Blob field = `Σ r² / d²`; cells above threshold render amber/orange, glow halo below. |
+| `underwater` | Dark blue-green gradient, 8 drifting caustic light patches near the floor (radial gradients), 35 rising bubbles with lateral wobble and a small specular highlight. |
+| `landscape` | Rolling silhouetted hills (2 layers, front darker) generated from layered sine waves. Stars in sky half, glowing moon with halo. Hills drift very slowly leftward over time. |
+| `glitch` | Dark base with random noise bands, horizontal chromatic-aberration tears (red/blue channel-split + white), and a slow VHS tracking bar. Tears accumulate and decay using module-level state; burst mode triggers when `sin(t) > 0.85`. |
+| `life` | Conway's Game of Life on a full `113×75` grid (`8px` cells), stepping every ~110ms. Alive cells rendered in hue-cycling `hsla` at 20% opacity. Reinitialises when population drops below 1.5%. |
+| `reaction` | Gray-Scott reaction-diffusion on a `113×75` grid (`8px` cells), 3 steps/frame at `dt=0.1`. Parameters: `f=0.055, k=0.062, DA=1.0, DB=0.5` (coral/spot pattern). B-concentration drives both hue offset and lightness; hue base cycles slowly over time. |
 
 ### Starfield constellations
 
@@ -262,7 +272,7 @@ Constellations twinkle: `0.65 + 0.35 * sin(t * 0.0018 + ci * 2.1)` — each one 
 
 1. **Step 0** — Mode select (1P / 2P)
 2. **Step 1** — Difficulty select (Easy / Medium / Hard)
-3. **Step 2** — Background select (Dark / Starfield / Vaporwave / Tessellation / Plasma)
+3. **Step 2** — Background select (13 options, scrollable list — 7 visible at a time, centred on the selected item with "↑ N more / ↓ N more" hints)
 
 At step 2 the selected background animates live behind the picker UI (with a `rgba(0,0,0,0.55)` overlay so text stays readable). Pressing Enter starts the game.
 
@@ -270,7 +280,7 @@ At step 2 the selected background animates live behind the picker UI (with a `rg
 
 ### Key files
 
-- `src/background.js` — `drawBackground()`, `BG_STYLES`, `BG_LABELS`, three private draw functions
+- `src/background.js` — `drawBackground()`, `BG_STYLES`, `BG_LABELS`, 12 private draw functions; module-level state for matrix columns, bubbles, lava blobs, glitch tears, Life grid, and RD buffers
 - `src/renderer.js` — imports `drawBackground`, calls it in `draw1P` / `draw2P`; `this.bgStyle` property (default `'dark'`)
 - `src/game.js` — imports `drawBackground` / `BG_STYLES` / `BG_LABELS`; `this.menuBgStyle` index; step-2 menu rendering; passes `bgStyleIdx` to `_startGame`
 
