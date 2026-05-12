@@ -108,7 +108,8 @@ export function settleSand(grid, activeCells, maxSteps = 200) {
 
 // Convert a tetromino piece into sand grains
 // piece: {type, rotation, x, y}, cells: absolute [tx,ty] list, color: [r,g,b]
-export function lockPieceToSand(grid, cells, color) {
+// lockAge: optional parallel Uint8Array — set to 8 for each new grain (dissolve animation)
+export function lockPieceToSand(grid, cells, color, lockAge) {
   for (const [tx, ty] of cells) {
     const sx = tx * 2;
     const sy = ty * 2;
@@ -121,7 +122,9 @@ export function lockPieceToSand(grid, cells, color) {
         const r = Math.min(255, Math.max(0, color[0] + Math.floor((Math.random() - 0.5) * 20)));
         const g = Math.min(255, Math.max(0, color[1] + Math.floor((Math.random() - 0.5) * 20)));
         const b = Math.min(255, Math.max(0, color[2] + Math.floor((Math.random() - 0.5) * 20)));
-        setCell(grid, gx, gy, packColor(r, g, b));
+        const idx = gy * SAND_COLS + gx;
+        grid[idx] = packColor(r, g, b);
+        if (lockAge) lockAge[idx] = 8;
       }
     }
   }

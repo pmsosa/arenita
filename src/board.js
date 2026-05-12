@@ -1,4 +1,4 @@
-import { SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobsOnce, stepSand, isTopped, addGarbageRows } from './sand.js';
+import { SAND_COLS, SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobsOnce, stepSand, isTopped, addGarbageRows } from './sand.js';
 import { getAbsoluteCells, PIECES } from './tetromino.js';
 
 export const BOARD_COLS = 10;
@@ -7,6 +7,7 @@ export const BOARD_ROWS = 20;
 export class Board {
   constructor() {
     this.grid = createSandGrid();
+    this.lockAge = new Uint8Array(SAND_COLS * SAND_ROWS);
     this._settling = false;
     this._stillFrames = 0;
     this._clearAccum = null;
@@ -35,7 +36,7 @@ export class Board {
   // Lock piece into sand, start settling phase
   lockPiece(piece) {
     const cells = getAbsoluteCells(piece);
-    lockPieceToSand(this.grid, cells, piece.color);
+    lockPieceToSand(this.grid, cells, piece.color, this.lockAge);
     this._settling = true;
     this._stillFrames = 0;
   }
@@ -116,6 +117,7 @@ export class Board {
 
   reset() {
     this.grid.fill(0);
+    this.lockAge.fill(0);
     this._settling = false;
     this._stillFrames = 0;
     this._clearAccum = null;

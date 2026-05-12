@@ -250,20 +250,29 @@ export class Renderer {
     const data = imgData.data;
 
     const grid = state.board.grid;
+    const lockAge = state.board.lockAge;
     for (let gy = 0; gy < SAND_ROWS; gy++) {
       for (let gx = 0; gx < SAND_COLS; gx++) {
-        const val = grid[gy * SAND_COLS + gx];
+        const idx = gy * SAND_COLS + gx;
+        const val = grid[idx];
         if (!val) continue;
         const [r, g, b] = unpackColor(val);
+        // Dissolve flash: brighten newly-locked grains for 8 frames
+        const age = lockAge[idx];
+        const boost = age > 0 ? Math.round(age / 8 * 60) : 0;
+        if (age > 0) lockAge[idx]--;
+        const fr = Math.min(255, r + boost);
+        const fg = Math.min(255, g + boost);
+        const fb = Math.min(255, b + boost);
         // Each sand grain = sand×sand pixels in the canvas
         const px0 = gx * sand;
         const py0 = gy * sand;
         for (let py = py0; py < py0 + sand; py++) {
           for (let px = px0; px < px0 + sand; px++) {
             const i = (py * bw + px) * 4;
-            data[i]   = r;
-            data[i+1] = g;
-            data[i+2] = b;
+            data[i]   = fr;
+            data[i+1] = fg;
+            data[i+2] = fb;
             data[i+3] = 255;
           }
         }

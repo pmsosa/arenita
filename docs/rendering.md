@@ -165,6 +165,22 @@ Red vertical bar (`#FF4444`) drawn between the board edge and the center strip. 
 
 ---
 
+## Sand Dissolve Animation on Piece Lock (FEAT-05)
+
+When a piece locks, its grains flash bright white and decay over 8 frames — a tactile "thud" effect.
+
+### How it works
+
+`Board.lockAge` is a `Uint8Array(SAND_COLS × SAND_ROWS)` that runs in parallel with `Board.grid`. When `lockPieceToSand` writes a grain, it also writes `lockAge[idx] = 8`. During the `_drawBoard` ImageData pass, any grain with `lockAge > 0` gets a brightness boost of `age/8 * 60` added to each RGB channel (clamped to 255), then `lockAge[idx]` is decremented. At 60fps this gives a ~133ms white-flash-to-color settle effect with no physics involvement.
+
+### Key files
+
+- `src/sand.js` — `lockPieceToSand(grid, cells, color, lockAge)` — optional 4th param; writes `lockAge[idx] = 8` for each new grain
+- `src/board.js` — `this.lockAge` (Uint8Array, created in constructor, cleared in `reset()`); passed to `lockPieceToSand` in `lockPiece()`
+- `src/renderer.js` — `_drawBoard`: reads `state.board.lockAge`, applies boost, decrements in the grain render loop
+
+---
+
 ## Visual Style
 
 | Element | Style |

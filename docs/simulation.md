@@ -87,10 +87,11 @@ Sand always runs every frame — even while a piece is falling. `_settling` is o
 
 When a piece locks (`Board.lockPiece`):
 
-1. `lockPieceToSand(grid, cells, piece.color)` is called — the color comes from the piece object itself (assigned at spawn from the difficulty pool), not from `PIECES[type]`.
+1. `lockPieceToSand(grid, cells, piece.color, board.lockAge)` is called — the color comes from the piece object itself (assigned at spawn from the difficulty pool), not from `PIECES[type]`.
 2. Each tetromino cell `[tx, ty]` expands to 4 sand cells at `[tx*2+dx, ty*2+dy]` for `dx,dy ∈ {0,1}`.
 3. Each grain gets **±10 RGB variation** per channel (clamped to 0–255) for visual texture.
-4. `board._settling = true` is set — clear detection will fire once sand settles.
+4. Each grain also writes `lockAge[idx] = 8` — the renderer uses this to briefly flash the grains bright white (dissolve animation, FEAT-05).
+5. `board._settling = true` is set — clear detection will fire once sand settles.
 
 ---
 
@@ -184,6 +185,6 @@ Checked after each spawn. If true, `player.dead = true` and game over triggers.
 | `isTopped()` | Delegates to `isTopped(grid)`. |
 | `getGhostY(piece)` | Drops piece down 1 row at a time until collision — returns landing row. |
 | `addGarbage(rows)` | Delegates to `addGarbageRows(grid, rows)`. |
-| `reset()` | Zeros the grid, clears settling state. |
+| `reset()` | Zeros the grid and `lockAge`, clears settling state. |
 
 **Collision check detail:** Each tetromino cell `[tx, ty]` maps to 4 sand cells. All 4 are checked against walls, floor (`ty >= BOARD_ROWS` → `gy >= SAND_ROWS`), and non-zero grid values.
