@@ -28,6 +28,7 @@ export class Game {
     this.menuDifficulty = 1; // 0=easy, 1=medium, 2=hard
 
     this._setupMenuKeys();
+    this._setupDebugKeys();
   }
 
   _setupMenuKeys() {
@@ -258,9 +259,25 @@ export class Game {
     }
   }
 
+  _setupDebugKeys() {
+    this._debugChain = 0;
+    this._debugLastPressAt = 0;
+
+    this._debugKeyHandler = (e) => {
+      if (this.state !== STATE.PLAYING_1P || e.code !== 'Digit1') return;
+      const now = Date.now();
+      if (now - this._debugLastPressAt > 4000) this._debugChain = 0;
+      this.renderer.pushToast(this._debugChain + 1, false);
+      this._debugChain++;
+      this._debugLastPressAt = now;
+    };
+    window.addEventListener('keydown', this._debugKeyHandler);
+  }
+
   destroy() {
     this.input.destroy();
     window.removeEventListener('keydown', this._menuKeyHandler);
+    window.removeEventListener('keydown', this._debugKeyHandler);
   }
 }
 
