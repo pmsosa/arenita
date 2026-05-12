@@ -13,22 +13,23 @@ Strategic goal: layer same-colored pieces so their sand flows together into a wa
 Defined in `src/game.js`. States are string constants in the `STATE` object.
 
 ```
-MENU ──[Enter/1/2]──→ MENU (difficulty step) ──[Enter]──→ PLAYING_1P ──[ESC]──→ PAUSED ──[ESC]──→ PLAYING_1P
-                                │                               │
-                           [ESC/Back]                       [top-out]
-                                ↓                               ↓
-                             MENU                           FLOODING ──[~3s]──→ GAMEOVER ──[R]──→ MENU
-                        (mode step)
-                                                PLAYING_2P ──[ESC]──→ PAUSED ──[ESC]──→ PLAYING_2P
-                                                    │
-                                                [top-out]
-                                                    ↓
-                                                GAMEOVER ──[R]──→ MENU
+MENU ──[Enter/1/2]──→ MENU (difficulty) ──[Enter]──→ MENU (background) ──[Enter]──→ PLAYING_1P ──[ESC]──→ PAUSED
+ (mode)                     │                              │                               │               ──[ESC]──→ PLAYING_1P
+                        [ESC/Back]                    [ESC/Back]                       [top-out]
+                             ↓                             ↓                               ↓
+                           MENU                       MENU (difficulty)              FLOODING ──[~3s]──→ GAMEOVER ──[R]──→ MENU
+
+                                                                       PLAYING_2P ──[ESC]──→ PAUSED ──[ESC]──→ PLAYING_2P
+                                                                           │
+                                                                       [top-out]
+                                                                           ↓
+                                                                       GAMEOVER ──[R]──→ MENU
 ```
 
-**Menu is two-step:**
+**Menu is three-step:**
 1. **Mode step** (`menuStep = 0`): choose 1 Player or 2 Players. Navigate with ↑↓ or W/S. Press Enter/Space/Z to advance, or `1`/`2` as shortcuts that jump straight to difficulty.
-2. **Difficulty step** (`menuStep = 1`): choose Easy (3 colors), Medium (5 colors), or Hard (7 colors). Navigate with ↑↓ or W/S. Press Enter to start, Escape/Backspace to go back to mode selection.
+2. **Difficulty step** (`menuStep = 1`): choose Easy (3 colors), Medium (5 colors), or Hard (7 colors). Navigate with ↑↓ or W/S. Press Enter to advance, Escape/Backspace to go back.
+3. **Background step** (`menuStep = 2`): choose an animated background style. The selected style renders live behind the picker. Press Enter to start, Escape/Backspace to go back to difficulty.
 
 **Paused state** redraws the current game boards underneath the pause overlay — both players' boards remain visible.
 

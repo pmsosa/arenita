@@ -62,13 +62,14 @@ const CENTER_MID = (P2L.boardX + BW2 + P2R.boardX) / 2; // ≈ 450
 
 ### 1P
 
-1. Fill canvas black
+1. `drawBackground(ctx, bgStyle, w, h, t)` — animated background (replaces the black fill)
 2. `_drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand)` — sand + ghost + active piece
 3. `_drawSidePanel(ctx, state, leftPanelX, boardY, rightPanelX, cell, false)` — hold, next queue, stats
+4. `_drawToasts(ctx)` — comic-book toast notifications
 
 ### 2P
 
-1. Fill canvas black
+1. `drawBackground(ctx, bgStyle, w, h, t)` — animated background
 2. `_drawBoard` for each player
 3. Mini hold/next labels + `_drawPiecePreview` below each board (9px cells)
 4. `_drawCenterStrip` — title, P1/P2 labels, scores, level, "vs" text
@@ -214,6 +215,53 @@ Called from `game.js._update1P` after each clear result. `chains` is the raw val
 - `src/renderer.js` — `pushToast()`, `_drawStarburst()`, `_drawToasts()` (called at end of `draw1P`)
 - `src/game.js` — `_update1P()` captures `wasFirstClear`, calls `pushToast` on clear
 - `src/player.js` — `player.hasCleared` boolean, set to `true` on first clear in `_processClear`
+
+---
+
+## Animated Backgrounds (FEAT-03)
+
+Backgrounds are drawn by `src/background.js` before the board each frame. The style is selected by the player in the 3rd menu step and stored on `renderer.bgStyle`.
+
+### API
+
+```js
+drawBackground(ctx, style, w, h, t)
+// style: 'dark' | 'stars' | 'vaporwave' | 'tessellation'
+// t: Date.now() — drives all animations
+```
+
+Exported constants for iteration in menus:
+```js
+BG_STYLES  // ['dark', 'stars', 'vaporwave', 'tessellation']
+BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation']
+```
+
+### Styles
+
+| Style | Description |
+|---|---|
+| `dark` | Flat `#0d0d0d` fill — same as the original default |
+| `stars` | 50 persistent star objects drifting downward at varied speeds. Stars are module-level constants (no re-roll per frame). |
+| `vaporwave` | HSL-cycling gradient sky + floor, radial sun at horizon, scrolling perspective grid (horizontal lines quadratically spaced, vertical lines converging to vanishing point). Grid scrolls via `(t * 0.00006) % 0.1` scroll parameter. |
+| `tessellation` | Diamond lattice (`32px` half-size) drifting slowly downward; hue cycles over time. Alternating rows offset by half-cell for the diamond pattern. |
+
+### Menu integration
+
+`game.js` imports `drawBackground`, `BG_STYLES`, and `BG_LABELS`. The menu flow is now 3 steps:
+
+1. **Step 0** — Mode select (1P / 2P)
+2. **Step 1** — Difficulty select (Easy / Medium / Hard)
+3. **Step 2** — Background select (Dark / Starfield / Vaporwave / Tessellation)
+
+At step 2 the selected background animates live behind the picker UI (with a `rgba(0,0,0,0.55)` overlay so text stays readable). Pressing Enter starts the game.
+
+`renderer.bgStyle` is reset to `'dark'` when the player returns to the main menu.
+
+### Key files
+
+- `src/background.js` — `drawBackground()`, `BG_STYLES`, `BG_LABELS`, three private draw functions
+- `src/renderer.js` — imports `drawBackground`, calls it in `draw1P` / `draw2P`; `this.bgStyle` property (default `'dark'`)
+- `src/game.js` — imports `drawBackground` / `BG_STYLES` / `BG_LABELS`; `this.menuBgStyle` index; step-2 menu rendering; passes `bgStyleIdx` to `_startGame`
 
 ---
 

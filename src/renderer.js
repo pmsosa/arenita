@@ -1,6 +1,7 @@
 import { SAND_COLS, SAND_ROWS, unpackColor } from './sand.js';
 import { BOARD_COLS, BOARD_ROWS } from './board.js';
 import { PIECES, getAbsoluteCells } from './tetromino.js';
+import { drawBackground } from './background.js';
 
 // Layout constants
 const CELL  = 24; // tetromino cell px (1P)
@@ -42,6 +43,7 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.toasts = [];
+    this.bgStyle = 'dark';
   }
 
   setupFor1P() {
@@ -75,8 +77,7 @@ export class Renderer {
 
   draw1P(state) {
     const ctx = this.ctx;
-    ctx.fillStyle = '#0d0d0d';
-    ctx.fillRect(0, 0, P1.canvasW, P1.canvasH);
+    drawBackground(ctx, this.bgStyle, P1.canvasW, P1.canvasH, Date.now());
 
     this._drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand);
     this._drawSidePanel(ctx, state, P1.leftPanelX, P1.boardY, P1.rightPanelX, P1.cell, false);
@@ -158,8 +159,7 @@ export class Renderer {
 
   draw2P(stateL, stateR) {
     const ctx = this.ctx;
-    ctx.fillStyle = '#0d0d0d';
-    ctx.fillRect(0, 0, 900, 600);
+    drawBackground(ctx, this.bgStyle, 900, 600, Date.now());
 
     this._drawBoard(ctx, stateL, P2L.boardX, P2L.boardY, P2L.cell, P2L.sand);
     this._drawBoard(ctx, stateR, P2R.boardX, P2R.boardY, P2R.cell, P2R.sand);
