@@ -27,6 +27,7 @@ export class Player {
 
     this.dead = false;
     this.hasCleared = false;
+    this.dropTrail = null;
 
     // Garbage: rows pending delivery on next spawn
     this.garbageQueue = { pending: 0 };
@@ -119,6 +120,17 @@ export class Player {
     if (!this.active) return;
     const ghostY = this.board.getGhostY(this.active);
     const dist = ghostY - this.active.y;
+    if (dist > 0) {
+      this.dropTrail = {
+        type: this.active.type,
+        rotation: this.active.rotation,
+        x: this.active.x,
+        startY: this.active.y,
+        endY: ghostY,
+        color: this.active.color,
+        framesLeft: 5,
+      };
+    }
     this.active = { ...this.active, y: ghostY };
     this.score += dist * 2;
     this._lock();
@@ -147,6 +159,11 @@ export class Player {
   // Returns { cleared, chains } if a clear happened this frame, otherwise null
   update(dt, actions, opponentGarbageQueue) {
     if (this.dead) return null;
+
+    if (this.dropTrail) {
+      this.dropTrail.framesLeft--;
+      if (this.dropTrail.framesLeft <= 0) this.dropTrail = null;
+    }
 
     // Run board sand simulation; returns clear result when settling finishes
     const activeCells = this.active ? getAbsoluteCells(this.active) : null;
@@ -211,6 +228,7 @@ export class Player {
       linesCleared:   this.linesCleared,
       dead:           this.dead,
       garbagePending: this.garbageQueue.pending,
+      dropTrail:      this.dropTrail,
     };
   }
 
@@ -228,6 +246,7 @@ export class Player {
     this.fallTimer  = 0;
     this.dead       = false;
     this.hasCleared = false;
+    this.dropTrail  = null;
     this.garbageQueue.pending = 0;
     this._bag       = [];
     this._fillNext(3);

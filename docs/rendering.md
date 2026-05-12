@@ -362,6 +362,42 @@ Chain clears stack naturally: particles from the first clear are still alive (an
 
 ---
 
+## Bonus Visual Effects (FEAT-08)
+
+### Screen Shake
+
+On hard drop or line clear, the canvas translates by a small random offset for 6–8 frames, decaying to zero.
+
+**API:** `renderer.triggerShake(intensity, frames)` — sets a new shake only if the new intensity exceeds the current one. Each frame `_applyShake(ctx)` calls `ctx.translate(±rand*amp, ±rand*amp)` where `amp = intensity * (frames / 8)`, then decrements `frames`. The whole `draw1P` body is wrapped in `ctx.save()` / `ctx.restore()` so the transform resets cleanly each frame.
+
+**Triggers (game.js `_update1P`):**
+- Hard drop: `triggerShake(3, 6)` — detected by checking `actions.hardDrop && !!p.active` before `p.update()`
+- Chain clear step: `triggerShake(2 + chainDepth, 7)` — fired alongside the toast push, so intensity scales with chain depth
+
+### Sand Glow / Bloom
+
+One CSS `filter: brightness(1.04) saturate(1.1)` on the `#game` canvas element (`style.css`). Lifts overall luminosity slightly and increases color saturation, making grains feel warm and luminous without touching the Canvas draw path.
+
+### Hard Drop Trail
+
+When a piece hard-drops, each row it passed through renders as a fading ghost rectangle for 5 frames.
+
+**State:** `Player.dropTrail = { type, rotation, x, startY, endY, color, framesLeft }` — written in `hardDrop()` when `dist > 0`, decremented and nulled in `update()`, exposed via `getState().dropTrail`.
+
+**Render:** In `_drawBoard`, immediately after the particle pass (before the ghost piece), each row `y ∈ [startY, endY)` draws the piece cells at `rgba(color, framesLeft/5 * 0.45)`. Rows outside `[0, BOARD_ROWS)` are skipped.
+
+### Piece Color Pulse on Combo
+
+During an active chain (`chainDepth > 0`), the active piece's fill color lerps toward gold `[255, 220, 50]`. Strength = `min(chainDepth * 0.22, 0.7)`. Applied only to the fill pass in `_drawBoard`; the ghost piece is unaffected.
+
+**Key files:**
+- `style.css` — `filter` on `#game`
+- [src/renderer.js](../src/renderer.js) — `triggerShake`, `_applyShake`, `draw1P` save/restore, drop trail and color pulse in `_drawBoard`
+- [src/player.js](../src/player.js) — `dropTrail` field, written in `hardDrop()`, decremented in `update()`, returned in `getState()`
+- [src/game.js](../src/game.js) — shake triggers in `_update1P`
+
+---
+
 ## Audio (`src/audio.js`)
 
 Web Audio API synthesized sounds — no external files. All wrapped in try/catch so audio failures are silent.

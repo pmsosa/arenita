@@ -18,4 +18,5 @@ html, body {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  filter: brightness(1.04) saturate(1.1);
 }

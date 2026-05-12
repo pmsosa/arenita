@@ -191,14 +191,18 @@ export class Game {
     }
 
     const wasFirstClear = !p.hasCleared;
+    const isHardDropping = actions.hardDrop && !!p.active;
     const clearResult = p.update(dt * this.timeScale, actions, null);
     const chainDepth = p.board.activeChains; // capture after update
+
+    if (isHardDropping) this.renderer.triggerShake(3, 6);
 
     // Push a toast the exact frame each chain step fires (depth just increased)
     if (chainDepth > prevChainDepth) {
       // isFirstClear only applies to the very first step of the first chain ever
       const isFirst = wasFirstClear && prevChainDepth === 0;
       this.renderer.pushToast(chainDepth, isFirst);
+      this.renderer.triggerShake(2 + chainDepth, 7);
     }
 
     if (clearResult !== null) {

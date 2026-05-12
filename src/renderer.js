@@ -44,6 +44,22 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     this.toasts = [];
     this.bgStyle = 'dark';
+    this._shake = { frames: 0, intensity: 0 };
+  }
+
+  triggerShake(intensity, frames) {
+    if (this._shake.frames <= 0 || intensity > this._shake.intensity) {
+      this._shake.intensity = intensity;
+      this._shake.frames = frames;
+    }
+  }
+
+  _applyShake(ctx) {
+    const s = this._shake;
+    if (s.frames <= 0) return;
+    const amp = s.intensity * (s.frames / 8);
+    ctx.translate((Math.random() * 2 - 1) * amp, (Math.random() * 2 - 1) * amp);
+    s.frames--;
   }
 
   setupFor1P() {
@@ -77,11 +93,13 @@ export class Renderer {
 
   draw1P(state) {
     const ctx = this.ctx;
+    ctx.save();
+    this._applyShake(ctx);
     drawBackground(ctx, this.bgStyle, P1.canvasW, P1.canvasH, Date.now());
-
     this._drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand);
     this._drawSidePanel(ctx, state, P1.leftPanelX, P1.boardY, P1.rightPanelX, P1.cell, false);
     this._drawToasts(ctx);
+    ctx.restore();
   }
 
   pushToast(chains, isFirstClear) {
@@ -287,6 +305,22 @@ export class Renderer {
     // Particle pass — exploding grains fly off-board after a clear
     this._drawParticles(ctx, state.board.particles, bx, by, sand);
 
+    // Hard drop trail — fading ghost cells at each row the piece passed through
+    if (state.dropTrail) {
+      const tr = state.dropTrail;
+      const a = (tr.framesLeft / 5) * 0.45;
+      const cells = PIECES[tr.type].cells[tr.rotation];
+      const [tcr, tcg, tcb] = tr.color;
+      ctx.fillStyle = `rgba(${tcr},${tcg},${tcb},${a.toFixed(2)})`;
+      for (let y = tr.startY; y < tr.endY; y++) {
+        for (const [dc, dr] of cells) {
+          const ty = y + dr;
+          if (ty < 0 || ty >= BOARD_ROWS) continue;
+          ctx.fillRect(bx + (tr.x + dc) * cell, by + ty * cell, cell - 1, cell - 1);
+        }
+      }
+    }
+
     // Ghost piece
     if (state.active) {
       const ghostY = state.board.getGhostY(state.active);
@@ -303,11 +337,19 @@ export class Renderer {
       }
     }
 
-    // Active piece
+    // Active piece — lerps toward gold during active chains
     if (state.active) {
       const cells = getAbsoluteCells(state.active);
-      const color = state.active.color;
-      ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},0.85)`;
+      const [cr, cg, cb] = state.active.color;
+      const cd = this.chainDepth ?? 0;
+      let pr = cr, pg = cg, pb = cb;
+      if (cd > 0) {
+        const t = Math.min(cd * 0.22, 0.7);
+        pr = Math.round(cr + (255 - cr) * t);
+        pg = Math.round(cg + (220 - cg) * t * 0.7);
+        pb = Math.round(cb * (1 - t * 0.6));
+      }
+      ctx.fillStyle = `rgba(${pr},${pg},${pb},0.85)`;
       for (const [tx, ty] of cells) {
         if (ty < 0) continue;
         ctx.fillRect(bx + tx * cell, by + ty * cell, cell - 1, cell - 1);
