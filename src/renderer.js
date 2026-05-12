@@ -29,10 +29,19 @@ const CENTER_MID = (P2L.boardX + BW2 + P2R.boardX) / 2; // midpoint of center st
 const FONT = '14px monospace';
 const FONT_LG = 'bold 20px monospace';
 
+// Comic-book toast tiers: [words, color, fontSize, tiltDeg, starburstR, durationMs]
+const TOAST_TIERS = [
+  { words: ['BEGINNER!', 'NICE ONE!', 'FIRST!'],            color: '#FFD700', fontSize: 22, tilt: 8,  starburstR: 30, duration: 1800 },
+  { words: ['WHAM!', 'POW!', 'ZAP!'],                       color: '#ffffff', fontSize: 30, tilt: 12, starburstR: 36, duration: 1800 },
+  { words: ['KA-POW!', 'CRUNCH!', 'BOOM!'],                 color: '#FF8C00', fontSize: 34, tilt: 15, starburstR: 42, duration: 2000 },
+  { words: ['OBLITERATED!!', 'ANNIHILATED!!', 'MAYHEM!!'],  color: '#FF1493', fontSize: 26, tilt: 20, starburstR: 50, duration: 2200 },
+];
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    this.toasts = [];
   }
 
   setupFor1P() {
@@ -71,6 +80,80 @@ export class Renderer {
 
     this._drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand);
     this._drawSidePanel(ctx, state, P1.leftPanelX, P1.boardY, P1.rightPanelX, P1.cell, false);
+    this._drawToasts(ctx);
+  }
+
+  pushToast(chains, isFirstClear) {
+    let tier;
+    if (isFirstClear)   tier = 0;
+    else if (chains <= 1) tier = 1;
+    else if (chains === 2) tier = 2;
+    else                  tier = 3;
+
+    const t = TOAST_TIERS[tier];
+    const word = t.words[Math.floor(Math.random() * t.words.length)];
+    const sign = Math.random() < 0.5 ? 1 : -1;
+    const angle = sign * t.tilt * Math.PI / 180;
+
+    if (this.toasts.length >= 2) this.toasts.shift();
+    this.toasts.push({ word, color: t.color, angle, fontSize: t.fontSize, starburstR: t.starburstR, createdAt: Date.now(), duration: t.duration });
+  }
+
+  _drawStarburst(ctx, outerR, innerR, points) {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+      const r = i % 2 === 0 ? outerR : innerR;
+      const a = (i * Math.PI / points) - Math.PI / 2;
+      if (i === 0) ctx.moveTo(r * Math.cos(a), r * Math.sin(a));
+      else         ctx.lineTo(r * Math.cos(a), r * Math.sin(a));
+    }
+    ctx.closePath();
+  }
+
+  _drawToasts(ctx) {
+    const now = Date.now();
+    this.toasts = this.toasts.filter(t => now - t.createdAt < t.duration);
+
+    // Left panel dead space: below 3rd next-piece preview (~y=441) to board bottom (~y=540)
+    const baseY = 490;
+    const stackGap = 90;
+
+    for (let i = 0; i < this.toasts.length; i++) {
+      const t = this.toasts[i];
+      const elapsed   = now - t.createdAt;
+      const remaining = t.duration - elapsed;
+
+      const scale = elapsed < 200 ? 0.3 + 0.7 * (elapsed / 200) : 1.0;
+      const alpha = remaining < 500 ? remaining / 500 : 1.0;
+      // stack: newest toast at baseY, older toast pushed up
+      const y = baseY - (this.toasts.length - 1 - i) * stackGap;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(85, y); // center of left panel (x=10..160)
+      ctx.rotate(t.angle);
+      ctx.scale(scale, scale);
+
+      // starburst background
+      this._drawStarburst(ctx, t.starburstR, t.starburstR * 0.55, 8);
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fill();
+      ctx.strokeStyle = t.color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // text with black outline then colored fill
+      ctx.font = `bold ${t.fontSize}px Impact, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#000';
+      ctx.strokeText(t.word, 0, 0);
+      ctx.fillStyle = t.color;
+      ctx.fillText(t.word, 0, 0);
+
+      ctx.restore();
+    }
   }
 
   draw2P(stateL, stateR) {

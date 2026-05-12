@@ -181,6 +181,42 @@ CSS (`style.css`): dark body background, canvas centered with flexbox, `image-re
 
 ---
 
+## Comic-Book Toast Notifications (FEAT-01)
+
+Big bold comic-book word explosions in the left panel that fire after each line clear.
+
+### Visual design
+
+- Rendered in the left panel **dead space** below the 3rd Next-piece preview, centered at `(85, 490)`.
+- Up to 2 toasts stack simultaneously; when a 3rd arrives the oldest is dropped. Newer toasts sit at the base (`y=490`), older toasts shift up by `90px`.
+- Each toast: tilted 8–20° (random sign), starburst polygon background, thick black outline stroke, colored fill on top.
+- Scale-in animation over 200ms (0.3→1.0), then fade-out over the last 500ms of lifetime.
+
+### Tiers
+
+| Tier | Trigger | Words | Color | Duration |
+|------|---------|-------|-------|----------|
+| 0 | First clear ever | BEGINNER! / FIRST! / NICE ONE! | Gold `#FFD700` | 1.8s |
+| 1 | Basic clear (chains≤1) | WHAM! / POW! / ZAP! | White | 1.8s |
+| 2 | Double chain (chains=2) | KA-POW! / CRUNCH! / BOOM! | Orange `#FF8C00` | 2.0s |
+| 3 | Triple+ chain (chains≥3) | OBLITERATED!! / ANNIHILATED!! / MAYHEM!! | Magenta `#FF1493` | 2.2s |
+
+### API
+
+```js
+renderer.pushToast(chains, isFirstClear)
+```
+
+Called from `game.js._update1P` after each clear result. `chains` is the raw value from `clearResult.chains`; `isFirstClear` is `!player.hasCleared` sampled **before** the player update so it accurately reflects the very first clear.
+
+### Key files
+
+- `src/renderer.js` — `pushToast()`, `_drawStarburst()`, `_drawToasts()` (called at end of `draw1P`)
+- `src/game.js` — `_update1P()` captures `wasFirstClear`, calls `pushToast` on clear
+- `src/player.js` — `player.hasCleared` boolean, set to `true` on first clear in `_processClear`
+
+---
+
 ## Audio (`src/audio.js`)
 
 Web Audio API synthesized sounds — no external files. All wrapped in try/catch so audio failures are silent.

@@ -138,7 +138,12 @@ export class Game {
 
   _update1P(dt, actions) {
     const p = this.players[0];
-    p.update(dt, actions, null);
+    const wasFirstClear = !p.hasCleared;
+    const clearResult = p.update(dt, actions, null);
+
+    if (clearResult && clearResult.cleared > 0) {
+      this.renderer.pushToast(clearResult.chains, wasFirstClear);
+    }
 
     if (p.dead) {
       audio.gameover();

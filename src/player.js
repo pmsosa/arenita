@@ -26,6 +26,7 @@ export class Player {
     this.fallTimer  = 0;
 
     this.dead = false;
+    this.hasCleared = false;
 
     // Garbage: rows pending delivery on next spawn
     this.garbageQueue = { pending: 0 };
@@ -226,6 +227,7 @@ export class Player {
     this.lockResets = 0;
     this.fallTimer  = 0;
     this.dead       = false;
+    this.hasCleared = false;
     this.garbageQueue.pending = 0;
     this._bag       = [];
     this._fillNext(3);
@@ -235,6 +237,7 @@ export class Player {
 
 function _processClear(player, result, opponentGarbageQueue) {
   if (!result || result.cleared === 0) return;
+  player.hasCleared = true;
   const { cleared, chains } = result;
   const chainMult = [1, 2, 4, 8][Math.min(chains, 3)];
   player.score += cleared * player.level * chainMult;
