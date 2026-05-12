@@ -305,6 +305,20 @@ export class Renderer {
     // Particle pass — exploding grains fly off-board after a clear
     this._drawParticles(ctx, state.board.particles, bx, by, sand);
 
+    // Spin trail — fading ghost of the previous rotation, makes spins look snappy
+    if (state.spinTrail) {
+      const st = state.spinTrail;
+      const a = (st.framesLeft / 4) * 0.55;
+      const cells = PIECES[st.type].cells[st.rotation];
+      const [scr, scg, scb] = st.color;
+      ctx.fillStyle = `rgba(${scr},${scg},${scb},${a.toFixed(2)})`;
+      for (const [dc, dr] of cells) {
+        const ty = st.y + dr;
+        if (ty < 0 || ty >= BOARD_ROWS) continue;
+        ctx.fillRect(bx + (st.x + dc) * cell, by + ty * cell, cell - 1, cell - 1);
+      }
+    }
+
     // Hard drop trail — fading ghost cells at each row the piece passed through
     if (state.dropTrail) {
       const tr = state.dropTrail;

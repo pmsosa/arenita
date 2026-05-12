@@ -28,6 +28,7 @@ export class Player {
     this.dead = false;
     this.hasCleared = false;
     this.dropTrail = null;
+    this.spinTrail = null;
 
     // Garbage: rows pending delivery on next spawn
     this.garbageQueue = { pending: 0 };
@@ -105,6 +106,14 @@ export class Player {
     if (!this.active) return false;
     const result = rotatePiece(this.active, dir, this.board);
     if (!result) return false;
+    this.spinTrail = {
+      type: this.active.type,
+      rotation: this.active.rotation,
+      x: this.active.x,
+      y: this.active.y,
+      color: this.active.color,
+      framesLeft: 4,
+    };
     this.active = result;
     return true;
   }
@@ -163,6 +172,10 @@ export class Player {
     if (this.dropTrail) {
       this.dropTrail.framesLeft--;
       if (this.dropTrail.framesLeft <= 0) this.dropTrail = null;
+    }
+    if (this.spinTrail) {
+      this.spinTrail.framesLeft--;
+      if (this.spinTrail.framesLeft <= 0) this.spinTrail = null;
     }
 
     // Run board sand simulation; returns clear result when settling finishes
@@ -229,6 +242,7 @@ export class Player {
       dead:           this.dead,
       garbagePending: this.garbageQueue.pending,
       dropTrail:      this.dropTrail,
+      spinTrail:      this.spinTrail,
     };
   }
 
@@ -247,6 +261,7 @@ export class Player {
     this.dead       = false;
     this.hasCleared = false;
     this.dropTrail  = null;
+    this.spinTrail  = null;
     this.garbageQueue.pending = 0;
     this._bag       = [];
     this._fillNext(3);
