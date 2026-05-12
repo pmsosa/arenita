@@ -127,6 +127,20 @@ export function lockPieceToSand(grid, cells, color) {
   }
 }
 
+// Single-pass version: find and clear one batch of spanning blobs without looping or settling.
+// Returns { cleared: number of grains removed }
+export function detectAndClearBlobsOnce(grid) {
+  const clearSets = findClearComponents(grid);
+  let cleared = 0;
+  for (const comp of clearSets) {
+    for (const idx of comp) {
+      grid[idx] = 0;
+      cleared++;
+    }
+  }
+  return { cleared };
+}
+
 // Detect and remove wall-spanning same-color blobs
 // Returns { cleared: number of grains removed, chains: number of chain clears }
 export function detectAndClearBlobs(grid) {

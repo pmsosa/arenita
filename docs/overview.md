@@ -41,7 +41,7 @@ index.html
 | `src/player.js` | `Player` |
 | `src/board.js` | `Board`, `BOARD_COLS`, `BOARD_ROWS` |
 | `src/tetromino.js` | `PIECES`, `WALL_KICKS`, `PIECE_TYPES`, `SAND_COLORS`, `DIFFICULTY_COLOR_COUNTS`, `getAbsoluteCells`, `rotatePiece`, `spawnPiece` |
-| `src/sand.js` | `SAND_COLS`, `SAND_ROWS`, `stepSand`, `lockPieceToSand`, `detectAndClearBlobs`, `addGarbageRows`, `isTopped`, `packColor`, `unpackColor` |
+| `src/sand.js` | `SAND_COLS`, `SAND_ROWS`, `stepSand`, `lockPieceToSand`, `detectAndClearBlobsOnce`, `detectAndClearBlobs`, `addGarbageRows`, `isTopped`, `packColor`, `unpackColor` |
 | `src/renderer.js` | `Renderer` |
 | `src/audio.js` | `audio` |
 

@@ -31,6 +31,9 @@ export class Game {
     this.menuDifficulty = 1; // 0=easy, 1=medium, 2=hard
     this.menuBgStyle = 0;    // index into BG_STYLES
 
+    this.timeScale = 1.0;
+    this._timeScaleTween = null;
+
     this._setupMenuKeys();
     this._setupDebugKeys();
   }
@@ -89,6 +92,8 @@ export class Game {
     const colorPool = SAND_COLORS.slice(0, colorCount);
 
     this.renderer.bgStyle = BG_STYLES[bgStyleIdx] ?? 'dark';
+    this.timeScale = 1.0;
+    this._timeScaleTween = null;
 
     this.players = [];
     if (numPlayers === 1) {
@@ -164,19 +169,47 @@ export class Game {
 
   _update1P(dt, actions) {
     const p = this.players[0];
-    const wasFirstClear = !p.hasCleared;
-    const clearResult = p.update(dt, actions, null);
 
-    if (clearResult && clearResult.cleared > 0) {
-      this.renderer.pushToast(clearResult.chains, wasFirstClear);
+    // Advance tween back to 1.0 (real time, not scaled)
+    if (this._timeScaleTween) {
+      this._timeScaleTween.elapsed += dt;
+      const t = Math.min(this._timeScaleTween.elapsed / this._timeScaleTween.duration, 1);
+      this.timeScale = this._timeScaleTween.from + (1.0 - this._timeScaleTween.from) * t;
+      if (t >= 1) this._timeScaleTween = null;
+    }
+
+    // Snap timeScale down as chains deepen (only ever decreases here)
+    const chainDepth = p.board.activeChains;
+    if (chainDepth >= 2) {
+      const target = 1 / (1 + (chainDepth - 1) * 0.4);
+      if (target < this.timeScale) {
+        this.timeScale = target;
+        this._timeScaleTween = null;
+      }
+    }
+
+    const wasFirstClear = !p.hasCleared;
+    const clearResult = p.update(dt * this.timeScale, actions, null);
+
+    if (clearResult !== null) {
+      if (clearResult.cleared > 0) {
+        this.renderer.pushToast(clearResult.chains, wasFirstClear);
+      }
+      // Settling done — tween back to normal speed over 500ms
+      if (this.timeScale < 1.0) {
+        this._timeScaleTween = { from: this.timeScale, elapsed: 0, duration: 500 };
+      }
     }
 
     if (p.dead) {
       audio.gameover();
       this.state = STATE.FLOODING;
       this._floodFrame = 0;
+      this.timeScale = 1.0;
+      this._timeScaleTween = null;
     }
 
+    this.renderer.chainDepth = chainDepth;
     this.renderer.draw1P(p.getState());
   }
 
@@ -359,6 +392,9 @@ export class Game {
       if (e.code === 'Digit2') {
         this._debugSetupWin();
       }
+      if (e.code === 'Digit3') {
+        this._debugSetupChain();
+      }
     };
     window.addEventListener('keydown', this._debugKeyHandler);
   }
@@ -382,10 +418,59 @@ export class Game {
     p.board._settling = false;
     p.board._stillFrames = 0;
     p.board._clearAccum = null;
+    p.board._chainHold = 0;
 
     // Replace active piece with an I-piece at x=6 (covers sand cols 12–19 when dropped)
     // matching color A — hard drop immediately fills the gap and triggers the clear
     p.active = { type: 'I', rotation: 0, x: 6, y: -1, color };
+    p.fallTimer  = 0;
+    p.lockTimer  = 0;
+    p.lockResets = 0;
+  }
+
+  _debugSetupChain() {
+    const p = this.players[0];
+    const grid = p.board.grid;
+
+    grid.fill(0);
+
+    // Non-clearable gray floor (rows 36-39)
+    for (let y = 36; y < 40; y++) {
+      for (let x = 0; x < SAND_COLS; x++) {
+        const v = Math.floor((Math.random() - 0.5) * 10);
+        grid[y * SAND_COLS + x] = packColor(130 + v, 130 + v, 130 + v);
+      }
+    }
+
+    // RED band: rows 32-33, x=0..11 — gap at x=12..19 (I-piece fills it)
+    for (let y = 32; y <= 33; y++) {
+      for (let x = 0; x <= 11; x++) {
+        grid[y * SAND_COLS + x] = packColor(200, 60, 60);
+      }
+    }
+
+    // BLUE column: rows 24-31, x=0..1 — hangs above red; falls after red clears
+    for (let y = 24; y <= 31; y++) {
+      for (let x = 0; x <= 1; x++) {
+        grid[y * SAND_COLS + x] = packColor(60, 100, 220);
+      }
+    }
+
+    // BLUE band: rows 34-35, x=2..19 — gap at x=0..1, completed by falling column
+    for (let y = 34; y <= 35; y++) {
+      for (let x = 2; x <= 19; x++) {
+        grid[y * SAND_COLS + x] = packColor(60, 100, 220);
+      }
+    }
+
+    p.board._settling = false;
+    p.board._stillFrames = 0;
+    p.board._clearAccum = null;
+    p.board._chainHold = 0;
+    p.board.activeChains = 0;
+
+    // I-piece (horizontal) at x=6 covers sand cols 12-19 — hard drop fills the red gap
+    p.active = { type: 'I', rotation: 0, x: 6, y: 0, color: [200, 60, 60] };
     p.fallTimer  = 0;
     p.lockTimer  = 0;
     p.lockResets = 0;

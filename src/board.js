@@ -1,4 +1,4 @@
-import { SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobs, stepSand, isTopped, addGarbageRows } from './sand.js';
+import { SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobsOnce, stepSand, isTopped, addGarbageRows } from './sand.js';
 import { getAbsoluteCells, PIECES } from './tetromino.js';
 
 export const BOARD_COLS = 10;
@@ -10,6 +10,8 @@ export class Board {
     this._settling = false;
     this._stillFrames = 0;
     this._clearAccum = null;
+    this._chainHold = 0;   // frame countdown before next BFS pass after a clear
+    this.activeChains = 0; // current chain depth while settling (0 = none in progress)
   }
 
   // Check if a set of tetromino-grid cells collide with walls or settled sand
@@ -39,7 +41,9 @@ export class Board {
   }
 
   // Run sand simulation every frame; activeCells = null when no active piece
-  // Returns { cleared, chains } once settling completes, otherwise null
+  // Returns { cleared, chains } once settling completes, otherwise null.
+  // Clearing is stepped — one blob-detection pass per settle cycle — so each
+  // chain step is visible across multiple frames (enabling slow-mo escalation).
   update(dt, activeCells) {
     let moved = false;
     for (let i = 0; i < 3; i++) {
@@ -47,21 +51,35 @@ export class Board {
     }
 
     if (this._settling) {
+      // After a clear, hold for N frames so each chain step is visually distinct
+      if (this._chainHold > 0) {
+        this._chainHold--;
+        this._stillFrames = 0; // restart still-frame count fresh after hold
+        return null;
+      }
+
       if (!moved) {
         this._stillFrames++;
         if (this._stillFrames >= 2) {
           this._stillFrames = 0;
-          const result = detectAndClearBlobs(this.grid);
+          const result = detectAndClearBlobsOnce(this.grid);
           if (result.cleared > 0) {
-            // Accumulate clears and stay in settling mode so any sand that
-            // continues moving after this clear gets another clearing pass.
-            if (!this._clearAccum) this._clearAccum = { cleared: 0, chains: 0 };
+            if (!this._clearAccum) this._clearAccum = { cleared: 0, steps: 0 };
             this._clearAccum.cleared += result.cleared;
-            this._clearAccum.chains += result.chains + 1;
+            this._clearAccum.steps++;
+            this.activeChains = this._clearAccum.steps;
+            // Hold ~330ms before the next BFS pass so the chain is visible
+            this._chainHold = 20;
           } else {
             this._settling = false;
-            const final = this._clearAccum ?? result;
+            const steps = this._clearAccum?.steps ?? 0;
+            const final = {
+              cleared: this._clearAccum?.cleared ?? 0,
+              chains: steps > 0 ? steps - 1 : 0,
+            };
             this._clearAccum = null;
+            this._chainHold = 0;
+            this.activeChains = 0;
             return final;
           }
         }
@@ -101,5 +119,7 @@ export class Board {
     this._settling = false;
     this._stillFrames = 0;
     this._clearAccum = null;
+    this._chainHold = 0;
+    this.activeChains = 0;
   }
 }

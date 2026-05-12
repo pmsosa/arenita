@@ -237,9 +237,12 @@ export class Renderer {
     const bw = BOARD_COLS * cell;
     const bh = BOARD_ROWS * cell;
 
-    // Border
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1;
+    // Border — flashes orange/red during chain slow-mo
+    const cd = this.chainDepth ?? 0;
+    ctx.strokeStyle = cd >= 3 ? 'rgba(255,50,50,0.95)'
+                    : cd >= 2 ? 'rgba(255,160,0,0.9)'
+                    :           'rgba(255,255,255,0.4)';
+    ctx.lineWidth = cd >= 2 ? 2 : 1;
     ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
 
     // Sand grid via ImageData

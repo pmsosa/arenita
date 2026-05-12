@@ -54,9 +54,20 @@ update(dt, activeCells) {
     if (!moved) {
       this._stillFrames++;
       if (this._stillFrames >= 2) {
-        // Board is settled — detect and clear blobs
-        this._settling = false;
-        return detectAndClearBlobs(this.grid);
+        this._stillFrames = 0;
+        const result = detectAndClearBlobsOnce(this.grid);
+        if (result.cleared > 0) {
+          // Accumulate and stay settling — sand will fall again, triggering
+          // another pass next time it stills (step-mode chain detection)
+          this._clearAccum.steps++;
+          this.activeChains = this._clearAccum.steps;
+        } else {
+          // No blobs left — emit final result and exit settling
+          this._settling = false;
+          this.activeChains = 0;
+          return { cleared: this._clearAccum?.cleared ?? 0,
+                   chains: (this._clearAccum?.steps ?? 0) - 1 };
+        }
       }
     } else {
       this._stillFrames = 0;
@@ -67,6 +78,8 @@ update(dt, activeCells) {
 ```
 
 Sand always runs every frame — even while a piece is falling. `_settling` is only a flag for whether to check for clears. Clear detection fires after 2 consecutive still frames following a lock.
+
+**Step-mode clearing (FEAT-04):** Instead of the original `detectAndClearBlobs` (which looped all chain steps synchronously in one frame), the board now calls `detectAndClearBlobsOnce` — a single-pass version that clears one batch of blobs and returns. Between passes, the normal 3×/frame `stepSand` loop handles settling. This makes each chain step visible across multiple real frames and gives `game.js` time to apply the slow-mo `timeScale` between passes. `board.activeChains` is updated after each pass so game.js can read the current chain depth.
 
 ---
 
@@ -83,18 +96,19 @@ When a piece locks (`Board.lockPiece`):
 
 ## Clear Detection
 
-Runs via `detectAndClearBlobs(grid)` in `src/sand.js` after settling. Returns `{ cleared, chains }`.
+Detection is split into two functions in `src/sand.js`:
 
-### Algorithm
+- `detectAndClearBlobsOnce(grid)` — **single-pass, no settling** — used by `Board.update` for step-mode chain detection (FEAT-04). Returns `{ cleared }`.
+- `detectAndClearBlobs(grid)` — **legacy looping version** — kept for reference; no longer called by the game loop.
 
-Loops until no more clears are found:
+### Algorithm (per pass)
 
 1. **Find seeds:** Collect all non-garbage grains on the left wall (`x = 0`).
 2. **BFS per seed:** Flood-fill through grains of the same color (4-directional adjacency, with color tolerance ±30 per channel).
 3. **Wall-span check:** If the component touches the right wall (`x = SAND_COLS - 1`), it qualifies for clearing.
 4. **Clear:** Zero out all grains in qualifying components.
-5. **Re-settle:** Run `settleSand` (up to 200 steps) so sand above the cleared region falls.
-6. **Chain:** If any components were cleared this pass, increment chain count and loop again.
+
+In step-mode, settling between passes is handled by the regular `stepSand` loop across subsequent frames, not by `settleSand`. This is what makes each chain step visible to the player.
 
 **Color similarity** (`isSameColor`): allows ±30 per RGB channel. This is intentionally wide — grains from the same piece have ±10 variation, so they always match each other. False cross-color matches are prevented by design: every pair of colors in `SAND_COLORS` differs by >50 in at least one channel, so even with ±10 grain variation on both sides (worst case 20 of effective drift), the minimum inter-color distance still exceeds the 30-unit tolerance. See [pieces.md](pieces.md) for the full color pool.
 
@@ -165,7 +179,7 @@ Checked after each spawn. If true, `player.dead = true` and game over triggers.
 |---|---|
 | `collides(cells)` | True if any tetromino cell is out of bounds or overlaps a sand grain. Skips `ty < 0` (above board is valid). |
 | `lockPiece(piece)` | Converts piece to sand, sets `_settling = true`. |
-| `update(dt, activeCells)` | Runs 3 sand steps. Returns `{ cleared, chains }` when settling completes, else `null`. |
+| `update(dt, activeCells)` | Runs 3 sand steps. Returns `{ cleared, chains }` when settling completes (step-mode), else `null`. Sets `activeChains` during multi-clear settling. |
 | `isSettling()` | True while waiting for sand to settle after a lock. |
 | `isTopped()` | Delegates to `isTopped(grid)`. |
 | `getGhostY(piece)` | Drops piece down 1 row at a time until collision — returns landing row. |
