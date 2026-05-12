@@ -96,12 +96,15 @@ for (let gy = 0; gy < SAND_ROWS; gy++) {
     const val = grid[gy * SAND_COLS + gx];
     if (!val) continue;
     const [r, g, b] = unpackColor(val);
-    // Each sand grain fills a sand×sand pixel block
     const px0 = gx * sand, py0 = gy * sand;
-    for (let py = py0; py < py0 + sand; py++) {
-      for (let px = px0; px < px0 + sand; px++) {
-        const i = (py * bw + px) * 4;
-        data[i] = r; data[i+1] = g; data[i+2] = b; data[i+3] = 255;
+    const inner = sand - 1; // 1px gap on right+bottom; rest gets bevel
+    for (let dy = 0; dy < inner; dy++) {
+      for (let dx = 0; dx < inner; dx++) {
+        const hi = dx < 2 && dy < 2;
+        const sh = dx >= inner - 2 || dy >= inner - 2;
+        const bev = hi ? 14 : sh ? -14 : 0;
+        const i = ((py0 + dy) * bw + (px0 + dx)) * 4;
+        data[i] = clamp(r + bev); data[i+1] = clamp(g + bev); data[i+2] = clamp(b + bev); data[i+3] = 255;
       }
     }
   }
@@ -110,6 +113,34 @@ ctx.putImageData(imgData, bx, by); // single blit to canvas
 ```
 
 One `putImageData` call per board per frame regardless of how many grains are visible.
+
+---
+
+## Finer Sand Grain Rendering (FEAT-06)
+
+Each grain is rendered with subtle depth cues instead of a flat solid block, making the sand mass look granular rather than painted.
+
+### How it works
+
+Within the `sand × sand` pixel block for each grain:
+
+- **1px gap**: the rightmost column and bottom row of each grain block are left empty (transparent/black), creating visible separation between adjacent grains.
+- **Highlight**: the top-left 2×2 pixel corner is brightened by +14 (simulates light from the top-left).
+- **Shadow**: pixels within 2px of the bottom or right inner edge are darkened by −14.
+- **Base color**: all remaining interior pixels use the grain's stored color (which already includes per-grain variation written at lock time by `lockPieceToSand`).
+
+Bevel values are clamped to [0, 255]. The FEAT-05 `lockAge` brightness boost is applied before the bevel, so newly-locked grains flash bright and then settle into the beveled appearance.
+
+### Constants
+
+| Mode | `sand` | `inner` | Bevel coverage |
+|------|--------|---------|----------------|
+| 1P   | 12px   | 11px    | 2/11 ≈ 18% each edge |
+| 2P   | 10px   | 9px     | 2/9 ≈ 22% each edge |
+
+### Key file
+
+- [src/renderer.js](../src/renderer.js) — `_drawBoard` ImageData loop (the grain fill block)
 
 ---
 

@@ -264,15 +264,19 @@ export class Renderer {
         const fr = Math.min(255, r + boost);
         const fg = Math.min(255, g + boost);
         const fb = Math.min(255, b + boost);
-        // Each sand grain = sand×sand pixels in the canvas
+        // Each sand grain = sand×sand pixels; leave 1px gap + bevel for depth
         const px0 = gx * sand;
         const py0 = gy * sand;
-        for (let py = py0; py < py0 + sand; py++) {
-          for (let px = px0; px < px0 + sand; px++) {
-            const i = (py * bw + px) * 4;
-            data[i]   = fr;
-            data[i+1] = fg;
-            data[i+2] = fb;
+        const inner = sand - 1; // 1px gap on right+bottom edge
+        for (let dy = 0; dy < inner; dy++) {
+          for (let dx = 0; dx < inner; dx++) {
+            const hi = dx < 2 && dy < 2;
+            const sh = dx >= inner - 2 || dy >= inner - 2;
+            const bev = hi ? 14 : sh ? -14 : 0;
+            const i = ((py0 + dy) * bw + (px0 + dx)) * 4;
+            data[i]   = Math.min(255, Math.max(0, fr + bev));
+            data[i+1] = Math.min(255, Math.max(0, fg + bev));
+            data[i+2] = Math.min(255, Math.max(0, fb + bev));
             data[i+3] = 255;
           }
         }
