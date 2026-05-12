@@ -17,7 +17,7 @@ MENU ──[Enter/1/2]──→ MENU (difficulty step) ──[Enter]──→ PL
                                 │                               │
                            [ESC/Back]                       [top-out]
                                 ↓                               ↓
-                             MENU                           GAMEOVER ──[R]──→ MENU
+                             MENU                           FLOODING ──[~3s]──→ GAMEOVER ──[R]──→ MENU
                         (mode step)
                                                 PLAYING_2P ──[ESC]──→ PAUSED ──[ESC]──→ PLAYING_2P
                                                     │
@@ -31,6 +31,8 @@ MENU ──[Enter/1/2]──→ MENU (difficulty step) ──[Enter]──→ PL
 2. **Difficulty step** (`menuStep = 1`): choose Easy (3 colors), Medium (5 colors), or Hard (7 colors). Navigate with ↑↓ or W/S. Press Enter to start, Escape/Backspace to go back to mode selection.
 
 **Paused state** redraws the current game boards underneath the pause overlay — both players' boards remain visible.
+
+**FLOODING state (1P only)** plays a ~3-second sand flood animation when the player tops out. Random-colored grains rain from the top of the board using the same sand simulation, visually filling the board before the score overlay appears. The flood runs for 180 frames (~3s at 60fps) then transitions to GAMEOVER. 2P deaths skip FLOODING and go directly to GAMEOVER.
 
 **Canvas size** changes with mode: 560×600 for 1P, 900×600 for 2P. Returning to menu resets to 560×600.
 

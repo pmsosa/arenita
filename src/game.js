@@ -3,12 +3,14 @@ import { Renderer } from './renderer.js';
 import { InputManager } from './input.js';
 import { audio } from './audio.js';
 import { SAND_COLORS, DIFFICULTY_COLOR_COUNTS } from './tetromino.js';
+import { SAND_COLS, SAND_ROWS, setCell, stepSand, packColor } from './sand.js';
 
 export const STATE = {
   MENU:       'MENU',
   PLAYING_1P: 'PLAYING_1P',
   PLAYING_2P: 'PLAYING_2P',
   PAUSED:     'PAUSED',
+  FLOODING:   'FLOODING',
   GAMEOVER:   'GAMEOVER',
 };
 
@@ -123,6 +125,10 @@ export class Game {
         this.renderer.drawPaused(this.prevState === STATE.PLAYING_2P);
         break;
 
+      case STATE.FLOODING:
+        this._tickFlood();
+        break;
+
       case STATE.GAMEOVER:
         if (global.restart) {
           this.state = STATE.MENU;
@@ -148,7 +154,8 @@ export class Game {
 
     if (p.dead) {
       audio.gameover();
-      this.state = STATE.GAMEOVER;
+      this.state = STATE.FLOODING;
+      this._floodFrame = 0;
     }
 
     this.renderer.draw1P(p.getState());
@@ -176,6 +183,29 @@ export class Game {
     }
 
     this.renderer.draw2P(stateL, stateR);
+  }
+
+  _tickFlood() {
+    const p = this.players[0];
+    const grid = p.board.grid;
+    const pool = p.colorPool;
+
+    // Rain sand from the top across the full width
+    for (let x = 0; x < SAND_COLS; x++) {
+      if (Math.random() < 0.7) {
+        const c = pool[Math.floor(Math.random() * pool.length)];
+        setCell(grid, x, 0, packColor(c[0], c[1], c[2]));
+      }
+    }
+
+    for (let i = 0; i < 3; i++) stepSand(grid, null);
+
+    this._floodFrame++;
+    this.renderer.draw1P(p.getState());
+
+    if (this._floodFrame >= 180) {
+      this.state = STATE.GAMEOVER;
+    }
   }
 
   _drawMenu() {
@@ -264,14 +294,47 @@ export class Game {
     this._debugLastPressAt = 0;
 
     this._debugKeyHandler = (e) => {
-      if (this.state !== STATE.PLAYING_1P || e.code !== 'Digit1') return;
-      const now = Date.now();
-      if (now - this._debugLastPressAt > 4000) this._debugChain = 0;
-      this.renderer.pushToast(this._debugChain + 1, false);
-      this._debugChain++;
-      this._debugLastPressAt = now;
+      if (this.state !== STATE.PLAYING_1P) return;
+      if (e.code === 'Digit1') {
+        const now = Date.now();
+        if (now - this._debugLastPressAt > 4000) this._debugChain = 0;
+        this.renderer.pushToast(this._debugChain + 1, false);
+        this._debugChain++;
+        this._debugLastPressAt = now;
+      }
+      if (e.code === 'Digit2') {
+        this._debugSetupWin();
+      }
     };
     window.addEventListener('keydown', this._debugKeyHandler);
+  }
+
+  _debugSetupWin() {
+    const p = this.players[0];
+    const color = p.colorPool[0];
+    const packed = packColor(color[0], color[1], color[2]);
+    const grid = p.board.grid;
+
+    // Clear board, fill bottom 18 sand rows cols 0–15 with color A (left wall to col 15)
+    // Leaves sand cols 16–19 empty so the blob doesn't span both walls yet
+    grid.fill(0);
+    for (let gy = SAND_ROWS - 18; gy < SAND_ROWS; gy++) {
+      for (let gx = 0; gx < 16; gx++) {
+        setCell(grid, gx, gy, packed);
+      }
+    }
+
+    // Reset settling state so the board doesn't think it's mid-settle
+    p.board._settling = false;
+    p.board._stillFrames = 0;
+    p.board._clearAccum = null;
+
+    // Replace active piece with an I-piece at x=6 (covers sand cols 12–19 when dropped)
+    // matching color A — hard drop immediately fills the gap and triggers the clear
+    p.active = { type: 'I', rotation: 0, x: 6, y: -1, color };
+    p.fallTimer  = 0;
+    p.lockTimer  = 0;
+    p.lockResets = 0;
   }
 
   destroy() {
