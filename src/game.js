@@ -178,10 +178,12 @@ export class Game {
       if (t >= 1) this._timeScaleTween = null;
     }
 
+    // Capture chain depth before this frame's update
+    const prevChainDepth = p.board.activeChains;
+
     // Snap timeScale down as chains deepen (only ever decreases here)
-    const chainDepth = p.board.activeChains;
-    if (chainDepth >= 2) {
-      const target = 1 / (1 + (chainDepth - 1) * 0.4);
+    if (prevChainDepth >= 2) {
+      const target = 1 / (1 + (prevChainDepth - 1) * 0.4);
       if (target < this.timeScale) {
         this.timeScale = target;
         this._timeScaleTween = null;
@@ -190,11 +192,16 @@ export class Game {
 
     const wasFirstClear = !p.hasCleared;
     const clearResult = p.update(dt * this.timeScale, actions, null);
+    const chainDepth = p.board.activeChains; // capture after update
+
+    // Push a toast the exact frame each chain step fires (depth just increased)
+    if (chainDepth > prevChainDepth) {
+      // isFirstClear only applies to the very first step of the first chain ever
+      const isFirst = wasFirstClear && prevChainDepth === 0;
+      this.renderer.pushToast(chainDepth, isFirst);
+    }
 
     if (clearResult !== null) {
-      if (clearResult.cleared > 0) {
-        this.renderer.pushToast(clearResult.chains, wasFirstClear);
-      }
       // Settling done — tween back to normal speed over 500ms
       if (this.timeScale < 1.0) {
         this._timeScaleTween = { from: this.timeScale, elapsed: 0, duration: 500 };
