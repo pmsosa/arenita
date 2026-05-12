@@ -98,8 +98,74 @@ export class Renderer {
     drawBackground(ctx, this.bgStyle, P1.canvasW, P1.canvasH, Date.now());
     this._drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand);
     this._drawSidePanel(ctx, state, P1.leftPanelX, P1.boardY, P1.rightPanelX, P1.cell, false);
+    this._drawHoldAnim(ctx, state);
     this._drawToasts(ctx);
     ctx.restore();
+  }
+
+  _drawHoldAnim(ctx, state) {
+    if (!state.holdAnim) return;
+    const anim  = state.holdAnim;
+    const elapsed = Date.now() - anim.startAt;
+    if (elapsed >= anim.duration) return;
+
+    const t    = elapsed / anim.duration;
+    const ease = t * t; // ease-in: slow start, then accelerates (vacuum pull)
+    const cell = P1.cell;
+    const bx   = P1.boardX;
+    const by   = P1.boardY;
+
+    // Center of hold preview box (matches _drawSidePanel's _drawPiecePreview call)
+    const hCell = cell * 0.75;
+    const holdCx = P1.leftPanelX + hCell * 1.5;
+    const holdCy = P1.boardY + 20 + hCell * 0.75;
+
+    // ── Incoming: piece flies from board to hold box ──────────────
+    const inc   = anim.incoming;
+    const iCells = PIECES[inc.type].cells[inc.rotation];
+    const iAvgDc = iCells.reduce((s, [dc]) => s + dc, 0) / iCells.length;
+    const iAvgDr = iCells.reduce((s, [, dr]) => s + dr, 0) / iCells.length;
+    const srcX = bx + (inc.x + iAvgDc + 0.5) * cell;
+    const srcY = by + (inc.y + iAvgDr + 0.5) * cell;
+
+    const cx    = srcX + (holdCx - srcX) * ease;
+    const cy    = srcY + (holdCy - srcY) * ease;
+    const scale = 1.0 - 0.88 * ease;
+    const alpha = 1.0 - 0.5 * ease;
+    const [icr, icg, icb] = inc.color;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = `rgb(${icr},${icg},${icb})`;
+    for (const [dc, dr] of iCells) {
+      ctx.fillRect((dc - iAvgDc - 0.5) * cell, (dr - iAvgDr - 0.5) * cell, cell - 1, cell - 1);
+    }
+    ctx.restore();
+
+    // ── Outgoing: held piece bursts out of hold box, expands and fades ──
+    if (anim.outgoing && t < 0.6) {
+      const ot     = t / 0.6;
+      const oEase  = 1 - (1 - ot) * (1 - ot); // ease-out
+      const out    = anim.outgoing;
+      const oCells = PIECES[out.type].cells[0];
+      const oAvgDc = oCells.reduce((s, [dc]) => s + dc, 0) / oCells.length;
+      const oAvgDr = oCells.reduce((s, [, dr]) => s + dr, 0) / oCells.length;
+      const oScale = 0.35 + 1.0 * oEase;
+      const oAlpha = (1 - oEase) * 0.75;
+      const [ocr, ocg, ocb] = out.color;
+
+      ctx.save();
+      ctx.globalAlpha = oAlpha;
+      ctx.translate(holdCx, holdCy);
+      ctx.scale(oScale, oScale);
+      ctx.fillStyle = `rgb(${ocr},${ocg},${ocb})`;
+      for (const [dc, dr] of oCells) {
+        ctx.fillRect((dc - oAvgDc - 0.5) * cell, (dr - oAvgDr - 0.5) * cell, cell - 1, cell - 1);
+      }
+      ctx.restore();
+    }
   }
 
   pushToast(chains, isFirstClear) {

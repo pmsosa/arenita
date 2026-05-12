@@ -29,6 +29,7 @@ export class Player {
     this.hasCleared = false;
     this.dropTrail = null;
     this.spinTrail = null;
+    this.holdAnim  = null;
 
     // Garbage: rows pending delivery on next spawn
     this.garbageQueue = { pending: 0 };
@@ -80,6 +81,15 @@ export class Player {
     if (this.holdUsed || !this.active) return;
     this.holdUsed = true;
     const prev = this.held;
+    this.holdAnim = {
+      incoming: {
+        type: this.active.type, rotation: this.active.rotation,
+        x: this.active.x, y: this.active.y, color: this.active.color,
+      },
+      outgoing: prev ? { type: prev.type, color: prev.color } : null,
+      startAt: Date.now(),
+      duration: 220,
+    };
     this.held = { type: this.active.type, color: this.active.color };
     if (prev) {
       this.active = spawnPiece(prev.type, prev.color);
@@ -177,6 +187,9 @@ export class Player {
       this.spinTrail.framesLeft--;
       if (this.spinTrail.framesLeft <= 0) this.spinTrail = null;
     }
+    if (this.holdAnim && Date.now() - this.holdAnim.startAt >= this.holdAnim.duration) {
+      this.holdAnim = null;
+    }
 
     // Run board sand simulation; returns clear result when settling finishes
     const activeCells = this.active ? getAbsoluteCells(this.active) : null;
@@ -243,6 +256,7 @@ export class Player {
       garbagePending: this.garbageQueue.pending,
       dropTrail:      this.dropTrail,
       spinTrail:      this.spinTrail,
+      holdAnim:       this.holdAnim,
     };
   }
 
@@ -262,6 +276,7 @@ export class Player {
     this.hasCleared = false;
     this.dropTrail  = null;
     this.spinTrail  = null;
+    this.holdAnim   = null;
     this.garbageQueue.pending = 0;
     this._bag       = [];
     this._fillNext(3);
