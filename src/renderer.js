@@ -284,6 +284,9 @@ export class Renderer {
     }
     ctx.putImageData(imgData, bx, by);
 
+    // Particle pass — exploding grains fly off-board after a clear
+    this._drawParticles(ctx, state.board.particles, bx, by, sand);
+
     // Ghost piece
     if (state.active) {
       const ghostY = state.board.getGhostY(state.active);
@@ -316,6 +319,20 @@ export class Renderer {
       ctx.fillStyle = 'rgba(255,0,0,0.15)';
       ctx.fillRect(bx, by, bw, bh);
     }
+  }
+
+  _drawParticles(ctx, particles, bx, by, sand) {
+    const ps = particles.particles;
+    if (ps.length === 0) return;
+    const sz = sand * 0.45;
+    const half = sz / 2;
+    for (let i = 0; i < ps.length; i++) {
+      const p = ps[i];
+      ctx.globalAlpha = Math.max(0, p.life) * 0.9;
+      ctx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+      ctx.fillRect(bx + p.x * sand - half, by + p.y * sand - half, sz, sz);
+    }
+    ctx.globalAlpha = 1;
   }
 
   _drawSidePanel(ctx, state, leftX, boardY, rightX, cell, _compact) {

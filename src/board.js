@@ -1,5 +1,6 @@
 import { SAND_COLS, SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobsOnce, stepSand, isTopped, addGarbageRows } from './sand.js';
 import { getAbsoluteCells, PIECES } from './tetromino.js';
+import { ParticleSystem } from './particles.js';
 
 export const BOARD_COLS = 10;
 export const BOARD_ROWS = 20;
@@ -8,6 +9,7 @@ export class Board {
   constructor() {
     this.grid = createSandGrid();
     this.lockAge = new Uint8Array(SAND_COLS * SAND_ROWS);
+    this.particles = new ParticleSystem();
     this._settling = false;
     this._stillFrames = 0;
     this._clearAccum = null;
@@ -46,6 +48,8 @@ export class Board {
   // Clearing is stepped — one blob-detection pass per settle cycle — so each
   // chain step is visible across multiple frames (enabling slow-mo escalation).
   update(dt, activeCells) {
+    this.particles.update();
+
     let moved = false;
     for (let i = 0; i < 3; i++) {
       if (stepSand(this.grid, activeCells)) moved = true;
@@ -63,7 +67,9 @@ export class Board {
         this._stillFrames++;
         if (this._stillFrames >= 2) {
           this._stillFrames = 0;
-          const result = detectAndClearBlobsOnce(this.grid);
+          const result = detectAndClearBlobsOnce(this.grid, (idx, r, g, b) => {
+            this.particles.emitGrain(idx, r, g, b);
+          });
           if (result.cleared > 0) {
             if (!this._clearAccum) this._clearAccum = { cleared: 0, steps: 0 };
             this._clearAccum.cleared += result.cleared;
@@ -118,6 +124,7 @@ export class Board {
   reset() {
     this.grid.fill(0);
     this.lockAge.fill(0);
+    this.particles.clear();
     this._settling = false;
     this._stillFrames = 0;
     this._clearAccum = null;

@@ -63,7 +63,7 @@ const CENTER_MID = (P2L.boardX + BW2 + P2R.boardX) / 2; // ≈ 450
 ### 1P
 
 1. `drawBackground(ctx, bgStyle, w, h, t)` — animated background (replaces the black fill)
-2. `_drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand)` — sand + ghost + active piece
+2. `_drawBoard(ctx, state, P1.boardX, P1.boardY, P1.cell, P1.sand)` — sand ImageData + particles + ghost + active piece
 3. `_drawSidePanel(ctx, state, leftPanelX, boardY, rightPanelX, cell, false)` — hold, next queue, stats
 4. `_drawToasts(ctx)` — comic-book toast notifications
 
@@ -330,6 +330,35 @@ At step 2 the selected background animates live behind the picker UI (with a `rg
 - `src/background.js` — `drawBackground()`, `BG_STYLES`, `BG_LABELS`, 12 private draw functions; module-level state for matrix columns, bubbles, lava blobs, glitch tears, Life grid, and RD buffers
 - `src/renderer.js` — imports `drawBackground`, calls it in `draw1P` / `draw2P`; `this.bgStyle` property (default `'dark'`)
 - `src/game.js` — imports `drawBackground` / `BG_STYLES` / `BG_LABELS`; `this.menuBgStyle` index; step-2 menu rendering; passes `bgStyleIdx` to `_startGame`
+
+---
+
+## Sand Explosion Particles on Line Clear (FEAT-07)
+
+When a blob clears, each removed grain emits a particle that bursts outward, arcs off the board, and fades out.
+
+### How it works
+
+`detectAndClearBlobsOnce` in `sand.js` accepts an optional `onClear(idx, r, g, b)` callback. For each grain about to be zeroed, the callback fires — `board.js` forwards it to `ParticleSystem.emitGrain()`.
+
+Each particle stores:
+- `x, y` — position in **sand-grid coordinates** (fractional, starts at grain centre)
+- `vx, vy` — velocity in sand-grid units per frame; initial `vy` is biased upward (−0.4) so grains burst out before gravity pulls them down
+- `r, g, b` — the grain's color at time of clear
+- `life` (1.0 → 0) and `decay` per frame (~0.03–0.07, giving ~15–35 frame lifetimes)
+
+Every frame `ParticleSystem.update()` applies gravity (`vy += 0.045`), integrates position, decrements life, and compacts dead particles in-place. This runs unconditionally in `Board.update()` so particles continue animating after settling completes.
+
+The renderer calls `_drawParticles(ctx, particles, bx, by, sand)` immediately after `putImageData`, before the ghost and active piece. Each particle renders as a `sand × 0.45` px square via `ctx.fillRect`, with `globalAlpha` set to `life × 0.9`. Canvas coordinates are derived as `bx + p.x * sand` / `by + p.y * sand`, so particles can fly outside the board bounds over the background — they are not clipped.
+
+Chain clears stack naturally: particles from the first clear are still alive (and mid-arc) when the second chain fires ~330ms later.
+
+### Key files
+
+- [src/particles.js](../src/particles.js) — `ParticleSystem` class (`emitGrain`, `update`, `clear`)
+- [src/sand.js](../src/sand.js) — `detectAndClearBlobsOnce(grid, onClear)` — optional callback before each grain is zeroed
+- [src/board.js](../src/board.js) — `this.particles` (`ParticleSystem`); `update()` calls `particles.update()` each frame and passes callback to `detectAndClearBlobsOnce`; `reset()` calls `particles.clear()`
+- [src/renderer.js](../src/renderer.js) — `_drawParticles()` called in `_drawBoard` after `putImageData`
 
 ---
 
