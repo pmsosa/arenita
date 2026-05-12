@@ -226,14 +226,14 @@ Backgrounds are drawn by `src/background.js` before the board each frame. The st
 
 ```js
 drawBackground(ctx, style, w, h, t)
-// style: 'dark' | 'stars' | 'vaporwave' | 'tessellation'
+// style: 'dark' | 'stars' | 'vaporwave' | 'tessellation' | 'plasma'
 // t: Date.now() — drives all animations
 ```
 
 Exported constants for iteration in menus:
 ```js
-BG_STYLES  // ['dark', 'stars', 'vaporwave', 'tessellation']
-BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation']
+BG_STYLES  // ['dark', 'stars', 'vaporwave', 'tessellation', 'plasma']
+BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation', 'Plasma']
 ```
 
 ### Styles
@@ -241,9 +241,20 @@ BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation']
 | Style | Description |
 |---|---|
 | `dark` | Flat `#0d0d0d` fill — same as the original default |
-| `stars` | 50 persistent star objects drifting downward at varied speeds. Stars are module-level constants (no re-roll per frame). |
-| `vaporwave` | HSL-cycling gradient sky + floor, radial sun at horizon, scrolling perspective grid (horizontal lines quadratically spaced, vertical lines converging to vanishing point). Grid scrolls via `(t * 0.00006) % 0.1` scroll parameter. |
+| `stars` | 150 background stars drifting downward at varied speeds, tinted warm/cool/white for depth. 5 constellation clusters (Big Dipper, Cassiopeia, Orion, Southern Cross, Leo) each with pixel-offset stars, faint connecting lines, and an independent twinkle pulse. Stars and constellations are module-level constants (no re-roll per frame). |
+| `vaporwave` | HSL-cycling gradient sky + floor, radial sun at horizon, scrolling perspective grid (horizontal lines quadratically spaced, vertical lines converging to vanishing point). Grid scrolls via `(t * 0.00006) % 0.1`. |
 | `tessellation` | Diamond lattice (`32px` half-size) drifting slowly downward; hue cycles over time. Alternating rows offset by half-cell for the diamond pattern. |
+| `plasma` | Psychedelic pixel-liquid effect. Canvas divided into `8px` cells; each cell colored with a 4-wave sine plasma formula mapped to a fast-cycling HSL hue. Produces smooth color blobs that flow and morph continuously. `~5250` `fillRect` calls per frame at 560×600. |
+
+### Starfield constellations
+
+Each constellation is a module-level constant with:
+- `pts` — array of `[dx, dy]` pixel offsets from the constellation's base position
+- `edges` — pairs of `pts` indices to connect with lines
+- `ox, oy` — normalized base position (0–1 of canvas)
+- `speed` — downward drift rate (very slow; wraps at `oy = 1.0`)
+
+Constellations twinkle: `0.65 + 0.35 * sin(t * 0.0018 + ci * 2.1)` — each one pulses out of phase. Stars within a constellation also twinkle individually.
 
 ### Menu integration
 
@@ -251,7 +262,7 @@ BG_LABELS  // ['Dark', 'Starfield', 'Vaporwave', 'Tessellation']
 
 1. **Step 0** — Mode select (1P / 2P)
 2. **Step 1** — Difficulty select (Easy / Medium / Hard)
-3. **Step 2** — Background select (Dark / Starfield / Vaporwave / Tessellation)
+3. **Step 2** — Background select (Dark / Starfield / Vaporwave / Tessellation / Plasma)
 
 At step 2 the selected background animates live behind the picker UI (with a `rgba(0,0,0,0.55)` overlay so text stays readable). Pressing Enter starts the game.
 
