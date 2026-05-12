@@ -1,5 +1,7 @@
 # ARENITA 🏖️
 
+![arenita banner](arenita.png)
+
 ![built on a plane](https://badgen.net/badge/built/on%20a%20plane/blue)
 ![license](https://badgen.net/badge/license/BSD-3/green)
 ![vanilla js](https://badgen.net/badge/vanilla/js%20only/yellow)
