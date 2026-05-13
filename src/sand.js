@@ -2,8 +2,9 @@
 // Sand grid: 20 cols × 40 rows (2× the 10×20 tetromino grid)
 // Grid stored as flat Uint32Array: 0=empty, otherwise packed ABGR color
 
-export const SAND_COLS = 20;
-export const SAND_ROWS = 40;
+export const SAND_SCALE = 4; // tetromino-to-sand scale factor (each tetromino cell = SAND_SCALE×SAND_SCALE grains)
+export const SAND_COLS = 40;
+export const SAND_ROWS = 80;
 
 export function createSandGrid() {
   return new Uint32Array(SAND_COLS * SAND_ROWS);
@@ -32,11 +33,10 @@ function buildOccupied(activeCells) {
   const set = new Set();
   if (!activeCells) return set;
   for (const [tx, ty] of activeCells) {
-    const sx = tx * 2, sy = ty * 2;
-    set.add(`${sx},${sy}`);
-    set.add(`${sx+1},${sy}`);
-    set.add(`${sx},${sy+1}`);
-    set.add(`${sx+1},${sy+1}`);
+    const sx = tx * SAND_SCALE, sy = ty * SAND_SCALE;
+    for (let dy = 0; dy < SAND_SCALE; dy++)
+      for (let dx = 0; dx < SAND_SCALE; dx++)
+        set.add(`${sx+dx},${sy+dy}`);
   }
   return set;
 }
@@ -111,10 +111,10 @@ export function settleSand(grid, activeCells, maxSteps = 200) {
 // lockAge: optional parallel Uint8Array — set to 8 for each new grain (dissolve animation)
 export function lockPieceToSand(grid, cells, color, lockAge) {
   for (const [tx, ty] of cells) {
-    const sx = tx * 2;
-    const sy = ty * 2;
-    for (let dy = 0; dy < 2; dy++) {
-      for (let dx = 0; dx < 2; dx++) {
+    const sx = tx * SAND_SCALE;
+    const sy = ty * SAND_SCALE;
+    for (let dy = 0; dy < SAND_SCALE; dy++) {
+      for (let dx = 0; dx < SAND_SCALE; dx++) {
         const gx = sx + dx;
         const gy = sy + dy;
         if (gx < 0 || gx >= SAND_COLS || gy < 0 || gy >= SAND_ROWS) continue;

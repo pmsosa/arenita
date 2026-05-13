@@ -1,11 +1,11 @@
-import { SAND_COLS, SAND_ROWS, unpackColor } from './sand.js';
+import { SAND_COLS, SAND_ROWS, SAND_SCALE, unpackColor } from './sand.js';
 import { BOARD_COLS, BOARD_ROWS } from './board.js';
 import { PIECES, getAbsoluteCells } from './tetromino.js';
 import { drawBackground } from './background.js';
 
 // Layout constants
 const CELL  = 24; // tetromino cell px (1P)
-const SAND  = CELL / 2; // sand grain px = 12
+const SAND  = CELL / SAND_SCALE; // sand grain px
 
 // 1P layout  (canvas 560×600)
 // board 240×480 centered with panels on each side
@@ -19,7 +19,7 @@ const P1 = {
 // 2P layout (canvas 900×600)
 // Left board: x=10, right board ends at x=890, boards are 200px wide (cell=20)
 const C2 = 20;
-const S2 = C2 / 2;
+const S2 = C2 / SAND_SCALE;
 const BW2 = BOARD_COLS * C2;  // 200
 const BH2 = BOARD_ROWS * C2;  // 400
 

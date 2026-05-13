@@ -1,4 +1,4 @@
-import { SAND_COLS, SAND_ROWS, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobsOnce, stepSand, isTopped, addGarbageRows } from './sand.js';
+import { SAND_COLS, SAND_ROWS, SAND_SCALE, createSandGrid, getCell, lockPieceToSand, detectAndClearBlobsOnce, stepSand, isTopped, addGarbageRows } from './sand.js';
 import { getAbsoluteCells, PIECES } from './tetromino.js';
 import { ParticleSystem } from './particles.js';
 
@@ -23,9 +23,9 @@ export class Board {
       if (tx < 0 || tx >= BOARD_COLS) return true;
       if (ty >= BOARD_ROWS) return true;
       if (ty < 0) continue; // above board is fine
-      const sx = tx * 2, sy = ty * 2;
-      for (let dy = 0; dy < 2; dy++) {
-        for (let dx = 0; dx < 2; dx++) {
+      const sx = tx * SAND_SCALE, sy = ty * SAND_SCALE;
+      for (let dy = 0; dy < SAND_SCALE; dy++) {
+        for (let dx = 0; dx < SAND_SCALE; dx++) {
           const gy = sy + dy;
           if (gy >= SAND_ROWS) return true;
           if (gy >= 0 && getCell(this.grid, sx + dx, gy) !== 0) return true;
